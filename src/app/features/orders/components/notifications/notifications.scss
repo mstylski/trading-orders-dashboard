@@ -1,0 +1,34 @@
+.notifications {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: min(448px, calc(100vw - 48px));
+  z-index: 5;
+  display: grid;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px #0002;
+}
+
+.notification-message {
+  margin: 4px 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.check {
+  color: var(--positive);
+  margin-top: 4px;
+}

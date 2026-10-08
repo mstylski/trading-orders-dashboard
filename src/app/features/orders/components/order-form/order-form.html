@@ -1,0 +1,111 @@
+<section class="form-panel" aria-labelledby="new-order-title">
+  <div class="form-heading">
+    <div>
+      <h2 id="new-order-title" class="form-title">Nowe zlecenie</h2>
+      <p class="form-text">Wybierz instrument i określ parametry zlecenia.</p>
+    </div>
+    <button
+      class="icon-button"
+      type="button"
+      aria-label="Zamknij formularz"
+      (click)="cancelled.emit()"
+    >
+      ×
+    </button>
+  </div>
+  <form [formRoot]="form">
+    <div class="fields">
+      <div class="field">
+        <label class="field-label" for="order-symbol">Symbol</label>
+        <select
+          class="field-control"
+          id="order-symbol"
+          [formField]="form.symbol"
+          [attr.aria-invalid]="form.symbol().touched() && form.symbol().invalid()"
+          aria-describedby="symbol-error"
+        >
+          <option value="" disabled>Wybierz symbol</option>
+          @for (symbol of symbols(); track symbol) {
+            <option [value]="symbol">{{ symbol }}</option>
+          }
+        </select>
+        <span id="symbol-error" class="field-error">
+          @if (form.symbol().touched()) {
+            {{ form.symbol().errors()[0]?.message }}
+          }
+        </span>
+      </div>
+      <div class="field">
+        <label class="field-label" for="order-side">Strona</label>
+        <select class="field-control" id="order-side" [formField]="form.side">
+          <option value="BUY">BUY</option>
+          <option value="SELL">SELL</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label" for="order-size">Wolumen</label>
+        <input
+          class="field-control"
+          id="order-size"
+          type="text"
+          inputmode="decimal"
+          placeholder="np. 0,05"
+          [formField]="form.size"
+          [attr.aria-invalid]="(form.size().dirty() || form.size().touched()) && form.size().invalid()"
+          aria-describedby="size-error"
+        />
+        <span id="size-error" class="field-error">
+          @if (form.size().dirty() || form.size().touched()) {
+            {{ form.size().errors()[0]?.message }}
+          }
+        </span>
+      </div>
+      <div class="field">
+        <label class="field-label" for="order-price">Bieżąca cena <span class="field-hint">BID</span></label>
+        <input
+          class="field-control field-control--readonly"
+          id="order-price"
+          readonly
+          [value]="price() === null ? '—' : (price() | number: '1.0-8')"
+          aria-describedby="quote-help"
+        />
+        <span class="field-hint">Aktualizowana automatycznie</span>
+      </div>
+      <div class="field">
+        <label class="field-label" for="order-time">Czas otwarcia</label>
+        <input
+          class="field-control"
+          id="order-time"
+          type="datetime-local"
+          step="1"
+          [formField]="form.openTime"
+          [attr.aria-invalid]="form.openTime().touched() && form.openTime().invalid()"
+          aria-describedby="time-error"
+        />
+        <span id="time-error" class="field-error">
+          @if (form.openTime().touched()) {
+            {{ form.openTime().errors()[0]?.message }}
+          }
+        </span>
+      </div>
+    </div>
+    <div class="form-footer">
+      <p id="quote-help" class="form-text quote-help" aria-live="polite">
+        {{ unavailableReason() ?? 'Cena zostanie zapisana w momencie dodania zlecenia.' }}
+      </p>
+      <div class="form-actions">
+        <button class="button secondary" type="button" (click)="cancelled.emit()">Anuluj</button>
+        <button
+          class="button primary"
+          type="submit"
+          [disabled]="form().invalid() || form().submitting()"
+        >
+          Dodaj zlecenie
+        </button>
+      </div>
+    </div>
+    @if (submitError()) {
+      <p class="form-text field-error" role="alert">{{ submitError() }}</p>
+    }
+  </form>
+</section>

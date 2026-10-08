@@ -1,0 +1,16 @@
+<div class="notifications" aria-live="polite" aria-relevant="additions" aria-label="Powiadomienia">
+  @for (notification of messages(); track notification.id) {
+    <div class="notification">
+      <span class="check" aria-hidden="true">✓</span>
+      <p class="notification-message">{{ notification.message }}</p>
+      <button
+        class="icon-button"
+        type="button"
+        aria-label="Zamknij powiadomienie"
+        (click)="dismiss.emit(notification.id)"
+      >
+        ×
+      </button>
+    </div>
+  }
+</div>

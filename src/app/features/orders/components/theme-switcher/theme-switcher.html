@@ -1,0 +1,14 @@
+<label class="theme-picker" for="theme-preference">
+  <span>Motyw</span>
+  <select
+    #preference
+    class="theme-picker-select"
+    id="theme-preference"
+    [value]="theme.preference()"
+    (change)="theme.setPreference(preference.value)"
+  >
+    <option value="system">Systemowy</option>
+    <option value="light">Jasny</option>
+    <option value="dark">Ciemny</option>
+  </select>
+</label>

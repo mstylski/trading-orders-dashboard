@@ -1,0 +1,133 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Trading Desk — strona główna">
+      <span class="brand-mark" aria-hidden="true"
+        ><svg viewBox="0 0 24 24" width="22" height="22"><path class="brand-mark-path" d="M5 17V10m7 7V5m7 12v-7" /></svg
+      ></span>
+      <span>Trading<span class="brand-light">Desk</span></span>
+    </a>
+    <app-theme-switcher />
+  </header>
+  <main class="page-main" id="main-content">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">PANEL TRANSAKCYJNY</p>
+        <h1 class="page-title">Otwarte zlecenia</h1>
+        <p class="subtitle">Twoje pozycje i bieżące wyniki w jednym miejscu.</p>
+      </div>
+      <button
+        #addButton
+        class="button primary add-button"
+        type="button"
+        [disabled]="store.status() !== 'ready' || !store.symbols().length"
+        [attr.aria-expanded]="formOpen()"
+        aria-controls="new-order-panel"
+        (click)="openForm()"
+      >
+        <span class="add-button-icon" aria-hidden="true">+</span> Dodaj zlecenie
+      </button>
+    </div>
+    @if (formOpen()) {
+      @defer {
+        <app-order-form
+          id="new-order-panel"
+          [symbols]="store.symbols()"
+          [price]="store.selectedPrice()"
+          [unavailableReason]="store.unavailablePriceReason()"
+          [submitError]="formError()"
+          (symbolChange)="selectSymbol($event)"
+          (submitted)="addOrder($event)"
+          (cancelled)="closeForm()"
+        />
+      } @placeholder {
+        <p role="status">Ładowanie formularza…</p>
+      }
+    }
+    @switch (store.status()) {
+      @case ('loading') {
+        <section class="state-panel" role="status">
+          <span class="spinner" aria-hidden="true"></span>
+          <h2 class="state-panel-title">Ładowanie zleceń</h2>
+          <p class="state-panel-description">Pobieranie pozycji i danych instrumentów…</p>
+        </section>
+      }
+      @case ('error') {
+        <section class="state-panel" role="alert">
+          <h2 class="state-panel-title">Nie udało się załadować danych</h2>
+          <p class="state-panel-description">{{ store.error() }}</p>
+          <button class="button primary" type="button" (click)="store.load()">
+            Spróbuj ponownie
+          </button>
+        </section>
+      }
+      @case ('ready') {
+        <section aria-labelledby="positions-title">
+          <div class="table-toolbar">
+            <div class="table-title">
+              <h2 class="table-title-heading" id="positions-title">Pozycje</h2>
+              <span class="positions-count">{{ store.orders().length }}</span
+              ><span class="symbols-count">{{ store.groups().length }} symboli</span>
+            </div>
+            <div
+              class="connection"
+              role="status"
+              [class.connected]="store.connectionStatus() === 'connected'"
+              [class.disconnected]="store.connectionStatus() === 'reconnecting'"
+            >
+              <span class="status-dot" aria-hidden="true"></span>
+              @switch (store.connectionStatus()) {
+                @case ('connected') {
+                  Kwotowania na żywo
+                }
+                @case ('reconnecting') {
+                  Ponowne łączenie{{
+                    store.retryDelay() ? ' za ' + store.retryDelay() + ' s' : '…'
+                  }}
+                }
+                @default {
+                  Łączenie z kwotowaniami…
+                }
+              }
+            </div>
+          </div>
+          @if (store.hasStaleQuotes()) {
+            <p class="status-notice" role="status">
+              Wyświetlane ceny i wyniki mogą być nieaktualne. Oczekiwanie na nowe kwotowania;
+              dodawanie wymaga świeżej ceny wybranego symbolu.
+            </p>
+          }
+          @if (store.groups().length) {
+            <app-orders-table
+              [groups]="store.groups()"
+              [stale]="store.hasStaleQuotes()"
+              [newlyAdded]="newlyAdded()"
+              (closeOrder)="closeOrder($event)"
+              (closeGroup)="closeGroup($event)"
+            />
+          } @else {
+            <section class="state-panel empty">
+              <span class="empty-symbol" aria-hidden="true">≡</span>
+              <h2 class="state-panel-title">Brak otwartych zleceń</h2>
+              <p class="state-panel-description">
+                {{
+                  store.symbols().length
+                    ? 'Dodaj zlecenie, aby otworzyć nową pozycję.'
+                    : 'Źródło danych nie zawiera zleceń ani symboli do wyboru.'
+                }}
+              </p>
+            </section>
+          }
+          <div class="table-footer">
+            <span>Kliknij grupę, aby zobaczyć szczegóły zleceń.</span
+            ><span>Daty w lokalnej strefie czasowej</span>
+          </div>
+        </section>
+      }
+    }
+    <footer class="page-footer">
+      <span class="demo-badge">DEMO</span> Zlecenia są zapisane w tej sesji. Odświeżenie przywróci
+      dane początkowe.
+    </footer>
+  </main>
+</div>
+<app-notifications [messages]="notifications()" (dismiss)="dismiss($event)" />

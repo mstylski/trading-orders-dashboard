@@ -1,0 +1,117 @@
+<div class="table-scroll" tabindex="0" role="region" aria-label="Tabela zleceń, przewijana poziomo">
+  <table class="orders-table" [class.stale]="stale()">
+    <caption class="sr-only">
+      Zlecenia pogrupowane według symbolu. Rozwiń grupę, aby zobaczyć szczegóły.
+    </caption>
+    <thead class="table-head">
+      <tr>
+        <th class="table-cell" scope="col">Symbol</th>
+        <th class="table-cell" scope="col">Nr zlecenia</th>
+        <th class="table-cell" scope="col">Strona</th>
+        <th scope="col" class="table-cell number">Wolumen</th>
+        <th class="table-cell" scope="col">Czas otwarcia</th>
+        <th scope="col" class="table-cell number">Cena otwarcia</th>
+        <th scope="col" class="table-cell number">Swap</th>
+        <th scope="col" class="table-cell number">Profit</th>
+        <th class="table-cell" scope="col"><span class="sr-only">Zamknij</span></th>
+      </tr>
+    </thead>
+    @for (group of groups(); track group.symbol) {
+      <tbody class="group-body">
+        <tr class="group-row" (click)="toggle(group.symbol)">
+          <th class="table-cell group-symbol-cell" scope="row">
+            <button
+              class="group-toggle"
+              type="button"
+              [attr.aria-expanded]="expanded().has(group.symbol)"
+              [attr.aria-label]="
+                (expanded().has(group.symbol) ? 'Zwiń grupę ' : 'Rozwiń grupę ') + group.symbol
+              "
+              (click)="$event.stopPropagation(); toggle(group.symbol)"
+            >
+              <svg
+                class="group-toggle-icon"
+                viewBox="0 0 16 16"
+                width="16"
+                height="16"
+                aria-hidden="true"
+                [class.rotated]="expanded().has(group.symbol)"
+              >
+                <path d="m6 4 4 4-4 4" />
+              </svg>
+              <span>{{ group.symbol }}</span
+              ><span class="count">{{ group.count }}</span>
+            </button>
+          </th>
+          <td class="table-cell"></td>
+          <td class="table-cell"></td>
+          <td class="table-cell number">{{ group.size | number: '1.0-8' }}</td>
+          <td class="table-cell"></td>
+          <td class="table-cell number">{{ group.openPrice | number: '1.0-8' }}</td>
+          <td class="table-cell number">{{ group.swap | number: '1.0-8' }}</td>
+          <td
+            class="table-cell number profit"
+            [class.positive]="group.profit !== null && group.profit > 0"
+            [class.negative]="group.profit !== null && group.profit < 0"
+            [attr.title]="group.profitUnavailableReason"
+          >
+            @if (group.profit !== null) {
+              {{ group.profit | number: '1.2-8' }}
+            } @else {
+              <span aria-hidden="true">—</span
+              ><span class="sr-only">{{ group.profitUnavailableReason }}</span>
+            }
+          </td>
+          <td class="table-cell action">
+            <button
+              class="icon-button close-button"
+              type="button"
+              [attr.aria-label]="'Zamknij grupę ' + group.symbol"
+              (click)="closeSymbol($event, group.symbol)"
+            >
+              ×
+            </button>
+          </td>
+        </tr>
+        @if (expanded().has(group.symbol)) {
+          @for (order of group.orders; track order.id) {
+            <tr class="order-row">
+              <td class="table-cell order-symbol">{{ order.symbol }}</td>
+              <th scope="row" class="table-cell order-id">{{ order.id }}</th>
+              <td class="table-cell">
+                <span class="side" [class.sell]="order.side === 'SELL'">{{ order.side }}</span>
+              </td>
+              <td class="table-cell number">{{ order.size | number: '1.0-8' }}</td>
+              <td class="table-cell date">{{ order.openTime | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
+              <td class="table-cell number">{{ order.openPrice | number: '1.0-8' }}</td>
+              <td class="table-cell number">{{ order.swap | number: '1.0-8' }}</td>
+              <td
+                class="table-cell number profit"
+                [class.positive]="order.profit !== null && order.profit > 0"
+                [class.negative]="order.profit !== null && order.profit < 0"
+                [attr.title]="group.profitUnavailableReason"
+              >
+                @if (order.profit !== null) {
+                  {{ order.profit | number: '1.2-8' }}
+                } @else {
+                  <span aria-hidden="true">—</span
+                  ><span class="sr-only">{{ group.profitUnavailableReason }}</span>
+                }
+              </td>
+              <td class="table-cell action">
+                <button
+                  class="icon-button close-button"
+                  type="button"
+                  [attr.aria-label]="'Zamknij zlecenie nr ' + order.id"
+                  (click)="closeOrder.emit(order.id)"
+                >
+                  ×
+                </button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    }
+  </table>
+</div>

@@ -1,0 +1,11 @@
+.theme-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.theme-picker-select {
+  min-height: 40px;
+}
