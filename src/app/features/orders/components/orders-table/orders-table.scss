@@ -42,7 +42,8 @@
   cursor: pointer;
 }
 
-.group-row:hover, .order-row:hover {
+.group-row:hover,
+.order-row:hover {
   background: var(--row-hover);
 }
 
@@ -122,7 +123,7 @@
   border-radius: 4px;
   padding: 3px 6px;
   font-size: 10px;
-  letter-spacing: .04em;
+  letter-spacing: 0.04em;
   font-weight: 700;
 }
 

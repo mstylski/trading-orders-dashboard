@@ -27,8 +27,8 @@
   color-scheme: dark;
   --background: rgb(42, 56, 71);
   --text: rgb(198, 210, 219);
-  --row: rgba(14, 15, 26, .25);
-  --row-hover: rgba(53, 71, 89, .5);
+  --row: rgba(14, 15, 26, 0.25);
+  --row-hover: rgba(53, 71, 89, 0.5);
   --surface: #263342;
   --detail: #293747;
   --muted: #a0b0c0;
@@ -56,7 +56,9 @@
   }
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -64,11 +66,18 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--text);
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-family:
+    'Segoe UI',
+    -apple-system,
+    BlinkMacSystemFont,
+    Arial,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-button, input, select {
+button,
+input,
+select {
   font: inherit;
 }
 
@@ -78,10 +87,14 @@ button {
 
 button:disabled {
   cursor: not-allowed;
-  opacity: .45;
+  opacity: 0.45;
 }
 
-button, a, input, select, [tabindex] {
+button,
+a,
+input,
+select,
+[tabindex] {
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -90,7 +103,8 @@ button, a, input, select, [tabindex] {
   outline-offset: 3px;
 }
 
-input, select {
+input,
+select {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface);
@@ -100,7 +114,8 @@ input, select {
   font-size: 13px;
 }
 
-input[aria-invalid='true'], select[aria-invalid='true'] {
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
   border-color: var(--error-text);
 }
 

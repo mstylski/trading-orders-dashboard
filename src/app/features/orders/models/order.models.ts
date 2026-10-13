@@ -1,3 +1,4 @@
+// API and quote data
 export type OrderSide = 'BUY' | 'SELL';
 
 export interface Order {
@@ -34,7 +35,12 @@ export interface Quote {
 }
 
 export type Quotes = ReadonlyMap<string, Quote>;
-export type ContractSizes = ReadonlyMap<string, number>;
+export type ContractSizeBySymbol = ReadonlyMap<string, number>;
+
+// Presentation data
+export type ProfitUnavailableReason = 'missing-contract' | 'awaiting-quote' | 'overflow';
+export type PriceUnavailableReason =
+  'select-symbol' | 'missing-contract' | 'disconnected' | 'awaiting-quote' | 'invalid-price';
 
 export interface OrderRow extends Order {
   readonly profit: number | null;
@@ -47,9 +53,13 @@ export interface OrderGroup {
   readonly openPrice: number;
   readonly swap: number;
   readonly profit: number | null;
-  readonly profitUnavailableReason: string | null;
+  readonly profitUnavailableReason: ProfitUnavailableReason | null;
   readonly orders: readonly OrderRow[];
 }
+
+// State and command results
+export type AddOrderError = 'invalid-input' | 'missing-contract' | 'stale-quote' | 'id-exhausted';
+export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface NewOrder {
   readonly symbol: string;
@@ -58,5 +68,5 @@ export interface NewOrder {
   readonly openTime: number;
 }
 
-export type AddOrderResult = { readonly order: Order } | { readonly error: string };
+export type AddOrderResult = { readonly order: Order } | { readonly error: AddOrderError };
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'reconnecting';

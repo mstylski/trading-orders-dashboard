@@ -1,0 +1,6 @@
+@if (value() !== null) {
+  {{ value() | number: '1.2-8' }}
+} @else {
+  <span aria-hidden="true">—</span>
+  <span class="sr-only">{{ reason() ? profitReasonLabel[reason()!] : '' }}</span>
+}

@@ -1,5 +1,5 @@
 import {
-  ContractSizes,
+  ContractSizeBySymbol,
   ContractType,
   Instrument,
   Order,
@@ -11,13 +11,13 @@ import {
 export function buildContractSizes(
   instruments: readonly Instrument[],
   contracts: readonly ContractType[],
-): ContractSizes {
-  const sizes = new Map(
+): ContractSizeBySymbol {
+  const contractSizeByType = new Map(
     contracts.map((contract) => [contract.contractType, contract.contractSize]),
   );
   const bySymbol = new Map<string, number>();
   for (const instrument of instruments) {
-    const size = sizes.get(instrument.contractType);
+    const size = contractSizeByType.get(instrument.contractType);
     if (size !== undefined) bySymbol.set(instrument.symbol, size);
   }
   return bySymbol;
@@ -37,34 +37,63 @@ export function calculateProfit(
 export function groupOrders(
   orders: readonly Order[],
   quotes: Quotes,
-  contractSizes: ContractSizes,
+  contractSizes: ContractSizeBySymbol,
 ): readonly OrderGroup[] {
+  return applyQuotes(prepareOrderGroups(orders), quotes, contractSizes);
+}
+
+export interface GroupedOrders {
+  readonly symbol: string;
+  readonly count: number;
+  readonly size: number;
+  readonly openPrice: number;
+  readonly swap: number;
+  readonly orders: readonly Order[];
+}
+
+export function prepareOrderGroups(orders: readonly Order[]): readonly GroupedOrders[] {
   const bySymbol = new Map<string, Order[]>();
   for (const order of orders) {
     const group = bySymbol.get(order.symbol);
     if (group) group.push(order);
     else bySymbol.set(order.symbol, [order]);
   }
-  return Array.from(bySymbol, ([symbol, members]) => {
-    const rows = members.map((order) => ({
+  return Array.from(bySymbol, ([symbol, members]) => ({
+    symbol,
+    count: members.length,
+    size: members.reduce((sum, order) => sum + order.size, 0),
+    openPrice: members.reduce((sum, order) => sum + order.openPrice, 0) / members.length,
+    swap: members.reduce((sum, order) => sum + order.swap, 0),
+    orders: members,
+  }));
+}
+
+export function applyQuotes(
+  groups: readonly GroupedOrders[],
+  quotes: Quotes,
+  contractSizes: ContractSizeBySymbol,
+): readonly OrderGroup[] {
+  return groups.map((group) => {
+    const { symbol } = group;
+    const rows = group.orders.map((order) => ({
       ...order,
       profit: calculateProfit(order, quotes.get(symbol), contractSizes.get(symbol)),
     }));
     const hasAllProfits = rows.every((row) => row.profit !== null);
     const profit = hasAllProfits ? rows.reduce((sum, row) => sum + row.profit!, 0) : null;
     return {
-      symbol,
-      count: rows.length,
-      size: rows.reduce((sum, row) => sum + row.size, 0),
-      openPrice: rows.reduce((sum, row) => sum + row.openPrice, 0) / rows.length,
-      swap: rows.reduce((sum, row) => sum + row.swap, 0),
+      symbol: group.symbol,
+      count: group.count,
+      size: group.size,
+      openPrice: group.openPrice,
+      swap: group.swap,
       profit: profit !== null && Number.isFinite(profit) ? profit : null,
       profitUnavailableReason: !contractSizes.has(symbol)
-        ? 'Brak wartości kontraktu dla tego instrumentu.'
+        ? 'missing-contract'
         : !quotes.has(symbol)
-          ? 'Oczekiwanie na pierwsze kwotowanie.'
+          ? 'awaiting-quote'
           : !hasAllProfits || (profit !== null && !Number.isFinite(profit))
-            ? 'Wynik przekracza obsługiwany zakres liczbowy.'
+            ? 'overflow'
             : null,
       orders: rows,
     };

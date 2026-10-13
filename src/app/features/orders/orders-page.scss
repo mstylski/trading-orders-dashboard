@@ -21,7 +21,7 @@
   font-weight: 750;
   text-decoration: none;
   color: inherit;
-  letter-spacing: -.04em;
+  letter-spacing: -0.04em;
 }
 
 .brand-light {
@@ -62,14 +62,14 @@
   margin: 0 0 10px;
   color: var(--muted);
   font-size: 10px;
-  letter-spacing: .16em;
+  letter-spacing: 0.16em;
   font-weight: 700;
 }
 
 .page-title {
   font-size: clamp(26px, 3vw, 34px);
   line-height: 1.2;
-  letter-spacing: -.045em;
+  letter-spacing: -0.045em;
   margin: 0 0 10px;
   font-weight: 650;
 }
@@ -179,7 +179,7 @@
 .demo-badge {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: .05em;
+  letter-spacing: 0.05em;
   padding: 1px 6px;
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -211,7 +211,7 @@
   border-radius: 50%;
   border: 2px solid var(--border);
   border-top-color: var(--accent);
-  animation: spin .8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 
 .empty-symbol {

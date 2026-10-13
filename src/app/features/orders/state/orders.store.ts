@@ -1,10 +1,19 @@
-import { computed, DestroyRef, inject, Injectable, signal } from '@angular/core';
+import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { OrdersApiService } from '../data/orders-api.service';
+import { InvalidPayloadError } from '../data/order.guards';
 import { QuotesService } from '../data/quotes.service';
-import { buildContractSizes, groupOrders } from '../domain/orders';
-import { AddOrderResult, ContractSizes, NewOrder, Order, OrdersData } from '../models/order.models';
+import { applyQuotes, buildContractSizes, prepareOrderGroups } from '../domain/orders';
+import {
+  AddOrderResult,
+  ContractSizeBySymbol,
+  LoadStatus,
+  NewOrder,
+  Order,
+  OrdersData,
+  PriceUnavailableReason,
+} from '../models/order.models';
 
 @Injectable()
 export class OrdersStore {
@@ -13,13 +22,13 @@ export class OrdersStore {
   private readonly destroyRef = inject(DestroyRef);
   private readonly orderState = signal<readonly Order[]>([]);
   private readonly symbolState = signal<readonly string[]>([]);
-  private readonly contractState = signal<ContractSizes>(new Map());
-  private readonly loadingState = signal<'loading' | 'ready' | 'error'>('loading');
+  private readonly contractState = signal<ContractSizeBySymbol>(new Map());
+  private readonly loadingState = signal<LoadStatus>('idle');
   private readonly errorState = signal<string | null>(null);
   private readonly selectedSymbolState = signal<string | null>(null);
-  private loading = false;
   private nextId = 1;
 
+  // Read models for the page and its form.
   readonly orders = this.orderState.asReadonly();
   readonly symbols = this.symbolState.asReadonly();
   readonly contractSizes = this.contractState.asReadonly();
@@ -29,19 +38,20 @@ export class OrdersStore {
   readonly quotes = this.quoteService.quotes;
   readonly connectionStatus = this.quoteService.status;
   readonly retryDelay = this.quoteService.retryDelay;
-  readonly groups = computed(() => groupOrders(this.orders(), this.quotes(), this.contractSizes()));
+  private readonly groupedOrders = computed(() => prepareOrderGroups(this.orders()));
+  readonly groups = computed(() =>
+    applyQuotes(this.groupedOrders(), this.quotes(), this.contractSizes()),
+  );
   readonly selectedPrice = computed(
     () => this.quotes().get(this.selectedSymbol() ?? '')?.bid ?? null,
   );
-  readonly unavailablePriceReason = computed(() => {
+  readonly unavailablePriceReason = computed<PriceUnavailableReason | null>(() => {
     const symbol = this.selectedSymbol();
-    if (!symbol) return 'Wybierz symbol, aby pobrać bieżącą cenę.';
-    if (!this.contractSizes().has(symbol)) return 'Brak wartości kontraktu dla wybranego symbolu.';
-    if (this.connectionStatus() !== 'connected')
-      return 'Brak połączenia z kwotowaniami. Poczekaj na ponowne połączenie.';
-    if (!this.quoteService.isFresh(symbol))
-      return 'Oczekiwanie na świeże kwotowanie wybranego symbolu.';
-    if ((this.selectedPrice() ?? 0) <= 0) return 'Bieżąca cena musi być większa od zera.';
+    if (!symbol) return 'select-symbol';
+    if (!this.contractSizes().has(symbol)) return 'missing-contract';
+    if (this.connectionStatus() !== 'connected') return 'disconnected';
+    if (!this.quoteService.isFresh(symbol)) return 'awaiting-quote';
+    if ((this.selectedPrice() ?? 0) <= 0) return 'invalid-price';
     return null;
   });
   readonly hasStaleQuotes = computed(() =>
@@ -49,10 +59,24 @@ export class OrdersStore {
       (order) => this.quotes().has(order.symbol) && !this.quoteService.isFresh(order.symbol),
     ),
   );
+  private readonly desiredSymbols = computed(() => {
+    if (this.status() !== 'ready') return null;
+    const symbols = new Set(this.orders().map((order) => order.symbol));
+    const selected = this.selectedSymbol();
+    if (selected) symbols.add(selected);
+    return symbols;
+  });
 
+  constructor() {
+    effect(() => {
+      const symbols = this.desiredSymbols();
+      if (symbols) this.quoteService.setSymbols(symbols);
+    });
+  }
+
+  // Load and validate the initial snapshot.
   load(): void {
-    if (this.loading || this.status() === 'ready') return;
-    this.loading = true;
+    if (this.status() !== 'idle' && this.status() !== 'error') return;
     this.loadingState.set('loading');
     this.errorState.set(null);
     this.api
@@ -70,46 +94,50 @@ export class OrdersStore {
     this.contractState.set(buildContractSizes(instruments, contracts));
     this.nextId = orders.reduce((max, order) => Math.max(max, order.id), 0) + 1;
     this.loadingState.set('ready');
-    this.loading = false;
-    this.syncSymbols();
   }
 
   private handleLoadError(error: unknown): void {
-    this.loading = false;
     this.loadingState.set('error');
-    this.errorState.set(
-      error instanceof Error && !(error instanceof HttpErrorResponse)
-        ? error.message
-        : 'Nie udało się pobrać zleceń lub danych instrumentów. Sprawdź połączenie i spróbuj ponownie.',
-    );
+    if (error instanceof InvalidPayloadError) {
+      const resourceLabel = {
+        orders: 'zlecenia',
+        instruments: 'instrumenty',
+        contracts: 'typy kontraktów',
+      }[error.resource];
+      this.errorState.set(`Nieprawidłowe dane: ${resourceLabel}.`);
+    } else if (error instanceof HttpErrorResponse && error.status === 0) {
+      this.errorState.set('Brak połączenia z serwerem danych. Sprawdź sieć i spróbuj ponownie.');
+    } else {
+      this.errorState.set('Nie udało się pobrać zleceń lub danych instrumentów. Spróbuj ponownie.');
+    }
   }
 
+  // Keep the form symbol in the quote subscription set.
   selectFormSymbol(symbol: string | null): void {
     this.selectedSymbolState.set(symbol && this.symbols().includes(symbol) ? symbol : null);
-    if (this.status() === 'ready') this.syncSymbols();
   }
 
+  // Apply in-memory order commands; quote subscriptions follow the derived symbol set.
   addOrder(input: NewOrder): AddOrderResult {
     if (
       this.status() !== 'ready' ||
       !this.symbols().includes(input.symbol) ||
-      !this.contractSizes().has(input.symbol) ||
       (input.side !== 'BUY' && input.side !== 'SELL') ||
       !Number.isFinite(input.size) ||
       input.size <= 0 ||
       !Number.isFinite(input.openTime) ||
       !Number.isFinite(new Date(input.openTime).getTime())
     ) {
-      return { error: 'Sprawdź symbol, stronę, dodatni wolumen i czas otwarcia.' };
+      return { error: 'invalid-input' };
     }
+    if (!this.contractSizes().has(input.symbol)) return { error: 'missing-contract' };
     const quote = this.quotes().get(input.symbol);
     if (!quote || quote.bid <= 0 || !this.quoteService.isFresh(input.symbol)) {
-      return { error: 'Dodanie wymaga świeżego kwotowania. Poczekaj na bieżącą cenę.' };
+      return { error: 'stale-quote' };
     }
-    if (!Number.isSafeInteger(this.nextId)) return { error: 'Wyczerpano zakres numerów zleceń.' };
+    if (!Number.isSafeInteger(this.nextId)) return { error: 'id-exhausted' };
     const order: Order = { ...input, id: this.nextId++, openPrice: quote.bid, swap: 0 };
     this.orderState.update((orders) => [...orders, order]);
-    this.syncSymbols();
     return { order };
   }
 
@@ -125,15 +153,7 @@ export class OrdersStore {
     const removed = this.orders().filter(matches);
     if (removed.length) {
       this.orderState.update((orders) => orders.filter((order) => !matches(order)));
-      this.syncSymbols();
     }
     return removed.map((order) => order.id);
-  }
-
-  private syncSymbols(): void {
-    const symbols = new Set(this.orders().map((order) => order.symbol));
-    const selected = this.selectedSymbol();
-    if (selected) symbols.add(selected);
-    this.quoteService.setSymbols(symbols);
   }
 }

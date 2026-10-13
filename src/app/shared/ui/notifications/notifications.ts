@@ -1,9 +1,5 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-
-export interface Notification {
-  readonly id: number;
-  readonly message: string;
-}
+import { ToastMessage } from '../../notifications/notification.service';
 
 @Component({
   selector: 'app-notifications',
@@ -12,6 +8,6 @@ export interface Notification {
   styleUrl: './notifications.scss',
 })
 export class Notifications {
-  readonly messages = input.required<readonly Notification[]>();
+  readonly messages = input.required<readonly ToastMessage[]>();
   readonly dismiss = output<number>();
 }

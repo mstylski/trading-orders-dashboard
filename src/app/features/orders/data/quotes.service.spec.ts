@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { QuotesService } from './quotes.service';
 import { FakeSocket } from '../testing/fixtures';
+import { QUOTE_SOCKET_FACTORY } from './quote-socket';
 
 describe('QuotesService', () => {
   let quotes: QuotesService;
@@ -8,20 +9,19 @@ describe('QuotesService', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     sockets = [];
-    vi.stubGlobal('WebSocket', function () {
+    const createSocket = () => {
       const socket = new FakeSocket();
       sockets.push(socket);
       return socket;
-    });
+    };
     TestBed.configureTestingModule({
-      providers: [QuotesService],
+      providers: [QuotesService, { provide: QUOTE_SOCKET_FACTORY, useValue: createSocket }],
     });
     quotes = TestBed.inject(QuotesService);
   });
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.useRealTimers();
-    vi.unstubAllGlobals();
   });
 
   it('uses one socket and sends only subscription differences', () => {

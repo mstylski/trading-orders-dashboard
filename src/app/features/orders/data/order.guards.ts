@@ -1,5 +1,13 @@
 import { ContractType, Instrument, Order } from '../models/order.models';
-import { isFiniteNumber, isRecord } from './validation';
+import { isFiniteNumber, isRecord } from '../../../shared/util/type-guards';
+
+export type ApiResource = 'orders' | 'instruments' | 'contracts';
+
+export class InvalidPayloadError extends Error {
+  constructor(readonly resource: ApiResource) {
+    super(`Invalid ${resource} payload`);
+  }
+}
 
 function isSymbol(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -46,15 +54,14 @@ export function validateList<T>(
   value: unknown,
   guard: (item: unknown) => item is T,
   key: (item: T) => unknown,
-  label: string,
+  resource: ApiResource,
 ): T[] {
   if (
     !Array.isArray(value) ||
     !value.every(guard) ||
     new Set(value.map(key)).size !== value.length
   ) {
-    throw new Error(`Nieprawidłowe dane: ${label}.`);
+    throw new InvalidPayloadError(resource);
   }
   return value;
 }
-

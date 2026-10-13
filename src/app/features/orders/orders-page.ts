@@ -3,7 +3,7 @@ import {
   Component,
   ElementRef,
   inject,
-  OnDestroy,
+  linkedSignal,
   OnInit,
   signal,
   viewChild,
@@ -12,35 +12,37 @@ import { OrdersStore } from './state/orders.store';
 import { QuotesService } from './data/quotes.service';
 import { OrdersTable } from './components/orders-table/orders-table';
 import { OrderForm } from './components/order-form/order-form';
-import { NewOrder, Order } from './models/order.models';
-import { ThemeSwitcher } from './components/theme-switcher/theme-switcher';
-import { Notification, Notifications } from './components/notifications/notifications';
+import { NewOrder, OrderGroup } from './models/order.models';
+import { ThemeSwitcher } from '../../shared/ui/theme-switcher/theme-switcher';
+import { Notifications } from '../../shared/ui/notifications/notifications';
+import { NotificationService } from '../../shared/notifications/notification.service';
+import { addOrderErrorLabel, priceReasonLabel } from './components/order-labels';
 
 @Component({
   selector: 'app-orders-page',
-  providers: [OrdersStore, QuotesService],
+  providers: [OrdersStore, QuotesService, NotificationService],
   imports: [OrdersTable, OrderForm, ThemeSwitcher, Notifications],
   templateUrl: './orders-page.html',
   styleUrl: './orders-page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class OrdersPage implements OnInit, OnDestroy {
+export class OrdersPage implements OnInit {
   protected readonly store = inject(OrdersStore);
   protected readonly formOpen = signal(false);
   protected readonly formError = signal<string | null>(null);
-  protected readonly notifications = signal<readonly Notification[]>([]);
-  protected readonly newlyAdded = signal<Order | null>(null);
+  protected readonly notifications = inject(NotificationService);
+  protected readonly expanded = linkedSignal<readonly OrderGroup[], ReadonlySet<string>>({
+    source: this.store.groups,
+    computation: (groups, previous) => {
+      const existing = new Set(groups.map((group) => group.symbol));
+      return new Set([...(previous?.value ?? [])].filter((symbol) => existing.has(symbol)));
+    },
+  });
+  protected readonly priceReasonLabel = priceReasonLabel;
   private readonly addButton = viewChild<ElementRef<HTMLButtonElement>>('addButton');
-  private readonly notificationTimers = new Map<number, ReturnType<typeof setTimeout>>();
-  private nextNotificationId = 1;
 
   ngOnInit(): void {
     this.store.load();
-  }
-
-  ngOnDestroy(): void {
-    for (const timer of this.notificationTimers.values()) clearTimeout(timer);
-    this.notificationTimers.clear();
   }
 
   protected openForm(): void {
@@ -63,11 +65,11 @@ export class OrdersPage implements OnInit, OnDestroy {
   protected addOrder(input: NewOrder): void {
     const result = this.store.addOrder(input);
     if ('error' in result) {
-      this.formError.set(result.error);
+      this.formError.set(addOrderErrorLabel[result.error]);
       return;
     }
-    this.newlyAdded.set(result.order);
-    this.notify(`Dodano zlecenie nr ${result.order.id}`);
+    this.expanded.update((expanded) => new Set([...expanded, result.order.symbol]));
+    this.notifications.notify(`Dodano zlecenie nr ${result.order.id}`);
     this.closeForm();
   }
 
@@ -78,25 +80,16 @@ export class OrdersPage implements OnInit, OnDestroy {
     this.notifyClosed(this.store.closeGroup(symbol));
   }
 
-  protected dismiss(id: number): void {
-    const timer = this.notificationTimers.get(id);
-    if (timer !== undefined) clearTimeout(timer);
-    this.notificationTimers.delete(id);
-    this.notifications.update((messages) => messages.filter((message) => message.id !== id));
+  protected toggleGroup(symbol: string): void {
+    this.expanded.update((expanded) => {
+      const next = new Set(expanded);
+      if (next.has(symbol)) next.delete(symbol);
+      else next.add(symbol);
+      return next;
+    });
   }
 
   private notifyClosed(ids: readonly number[]): void {
-    if (ids.length) this.notify(`Zamknięto zlecenie nr ${ids.join(', ')}`);
-  }
-
-  private notify(message: string): void {
-    const current = this.notifications();
-    if (current.length === 5) this.dismiss(current[0].id);
-    const id = this.nextNotificationId++;
-    this.notifications.update((messages) => [...messages, { id, message }]);
-    this.notificationTimers.set(
-      id,
-      setTimeout(() => this.dismiss(id), 4_000),
-    );
+    if (ids.length) this.notifications.notify(`Zamknięto zlecenie nr ${ids.join(', ')}`);
   }
 }

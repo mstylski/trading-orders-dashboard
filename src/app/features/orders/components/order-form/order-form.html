@@ -21,6 +21,7 @@
           class="field-control"
           id="order-symbol"
           [formField]="form.symbol"
+          (change)="onSymbolChange($event)"
           [attr.aria-invalid]="form.symbol().touched() && form.symbol().invalid()"
           aria-describedby="symbol-error"
         >
@@ -51,7 +52,9 @@
           inputmode="decimal"
           placeholder="np. 0,05"
           [formField]="form.size"
-          [attr.aria-invalid]="(form.size().dirty() || form.size().touched()) && form.size().invalid()"
+          [attr.aria-invalid]="
+            (form.size().dirty() || form.size().touched()) && form.size().invalid()
+          "
           aria-describedby="size-error"
         />
         <span id="size-error" class="field-error">
@@ -61,7 +64,9 @@
         </span>
       </div>
       <div class="field">
-        <label class="field-label" for="order-price">Bieżąca cena <span class="field-hint">BID</span></label>
+        <label class="field-label" for="order-price"
+          >Bieżąca cena <span class="field-hint">BID</span></label
+        >
         <input
           class="field-control field-control--readonly"
           id="order-price"
@@ -98,7 +103,13 @@
         <button
           class="button primary"
           type="submit"
-          [disabled]="form().invalid() || form().submitting()"
+          [disabled]="
+            form().invalid() ||
+            form().submitting() ||
+            unavailableReason() !== null ||
+            price() === null ||
+            price()! <= 0
+          "
         >
           Dodaj zlecenie
         </button>

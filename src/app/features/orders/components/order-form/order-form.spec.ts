@@ -40,7 +40,9 @@ describe('OrderForm', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.form.size().value()).toBe('e333');
-    expect(element.querySelector('#size-error')?.textContent).toContain('Podaj wolumen w postaci liczby');
+    expect(element.querySelector('#size-error')?.textContent).toContain(
+      'Podaj wolumen w postaci liczby',
+    );
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(true);
   });
@@ -61,7 +63,9 @@ describe('OrderForm', () => {
   it('notifies the page when the selected symbol changes', () => {
     const changed = vi.fn();
     fixture.componentInstance.symbolChange.subscribe(changed);
-    fixture.componentInstance.form.symbol().value.set('EURUSD');
+    const select = element.querySelector<HTMLSelectElement>('#order-symbol')!;
+    select.value = 'EURUSD';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
     fixture.detectChanges();
     expect(changed).toHaveBeenCalledWith('EURUSD');
     fixture.componentInstance.form.symbol().value.set('UNKNOWN');

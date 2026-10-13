@@ -5,7 +5,7 @@
     class="theme-picker-select"
     id="theme-preference"
     [value]="theme.preference()"
-    (change)="theme.setPreference(preference.value)"
+    (change)="changePreference(preference.value)"
   >
     <option value="system">Systemowy</option>
     <option value="light">Jasny</option>

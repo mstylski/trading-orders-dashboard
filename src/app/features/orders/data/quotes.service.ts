@@ -1,11 +1,17 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { ConnectionStatus, Quote, Quotes } from '../models/order.models';
-import { QUOTES_URL, QuoteSocket } from './quote-socket';
-import { isFiniteNumber, isRecord } from './validation';
+import { ConnectionStatus, Quotes } from '../models/order.models';
+import { QUOTES_URL, QUOTE_SOCKET_FACTORY, QuoteSocket } from './quote-socket';
+import { parseQuoteMessage } from './quote-message.guards';
+
+const CONNECT_TIMEOUT_MS = 10_000;
+const INITIAL_RETRY_DELAY_MS = 1_000;
+const MAX_RETRY_DELAY_MS = 30_000;
+const MAX_BACKOFF_EXPONENT = 5;
 
 @Injectable()
 export class QuotesService {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly createSocket = inject(QUOTE_SOCKET_FACTORY);
   private readonly quoteState = signal<Quotes>(new Map());
   private readonly statusState = signal<ConnectionStatus>('idle');
   private readonly freshSymbols = signal<ReadonlySet<string>>(new Set());
@@ -48,13 +54,13 @@ export class QuotesService {
     this.retryDelayState.set(null);
     let socket: QuoteSocket;
     try {
-      socket = new WebSocket(QUOTES_URL);
+      socket = this.createSocket(QUOTES_URL);
     } catch {
       this.scheduleReconnect();
       return;
     }
     this.socket = socket;
-    this.connectionTimer = setTimeout(() => this.disconnect(socket), 10_000);
+    this.connectionTimer = setTimeout(() => this.disconnect(socket), CONNECT_TIMEOUT_MS);
     socket.onopen = () => {
       if (this.socket !== socket || this.destroyRef.destroyed) return;
       clearTimeout(this.connectionTimer);
@@ -72,7 +78,7 @@ export class QuotesService {
 
   private syncSubscriptions(): void {
     const socket = this.socket;
-    if (!socket || socket.readyState !== 1) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
     const removed = [...this.subscribedSymbols].filter(
       (symbol) => !this.desiredSymbols.has(symbol),
     );
@@ -87,21 +93,10 @@ export class QuotesService {
   }
 
   private receive(data: unknown): void {
-    if (typeof data !== 'string') return;
-    let message: unknown;
-    try {
-      message = JSON.parse(data);
-    } catch {
-      return;
-    }
-    if (!isRecord(message) || message['p'] !== '/quotes/subscribed' || !Array.isArray(message['d']))
-      return;
     const quotes = new Map(this.quotes());
     const fresh = new Set(this.freshSymbols());
     let changed = false;
-    for (const item of message['d'] as unknown[]) {
-      const quote = this.toQuote(item);
-      if (!quote) continue;
+    for (const quote of parseQuoteMessage(data, this.subscribedSymbols)) {
       const previous = quotes.get(quote.symbol);
       if (previous && previous.timestamp > quote.timestamp) continue;
       quotes.set(quote.symbol, quote);
@@ -112,28 +107,6 @@ export class QuotesService {
       this.quoteState.set(quotes);
       this.freshSymbols.set(fresh);
     }
-  }
-
-  private toQuote(item: unknown): Quote | null {
-    if (
-      !isRecord(item) ||
-      typeof item['s'] !== 'string' ||
-      !this.subscribedSymbols.has(item['s']) ||
-      !isFiniteNumber(item['b']) ||
-      item['b'] < 0 ||
-      !isFiniteNumber(item['a']) ||
-      item['a'] < 0 ||
-      !isFiniteNumber(item['t']) ||
-      item['t'] < 0 ||
-      !Number.isFinite(item['t'] * 1000)
-    )
-      return null;
-    return {
-      symbol: item['s'],
-      bid: item['b'],
-      ask: item['a'],
-      timestamp: item['t'] * 1000,
-    };
   }
 
   private disconnect(socket: QuoteSocket): void {
@@ -147,7 +120,10 @@ export class QuotesService {
   private scheduleReconnect(): void {
     if (this.destroyRef.destroyed) return;
     this.statusState.set('reconnecting');
-    const delay = Math.min(1000 * 2 ** Math.min(this.retryAttempt++, 5), 30_000);
+    const delay = Math.min(
+      INITIAL_RETRY_DELAY_MS * 2 ** Math.min(this.retryAttempt++, MAX_BACKOFF_EXPONENT),
+      MAX_RETRY_DELAY_MS,
+    );
     this.retryDelayState.set(delay / 1000);
     this.retryTimer = setTimeout(() => {
       this.retryTimer = undefined;

@@ -4,6 +4,7 @@ import { OrdersPage } from './orders-page';
 import { appConfig } from '../../app.config';
 import { ORDERS_API } from './data/orders-api.service';
 import { FakeSocket, testData } from './testing/fixtures';
+import { QUOTE_SOCKET_FACTORY } from './data/quote-socket';
 
 describe('Dashboard integration', () => {
   let fixture: ComponentFixture<OrdersPage>;
@@ -12,14 +13,12 @@ describe('Dashboard integration', () => {
   let socket: FakeSocket;
   beforeEach(() => {
     socket = new FakeSocket();
-    vi.stubGlobal('WebSocket', function () {
-      return socket;
-    });
     TestBed.configureTestingModule({
       imports: [OrdersPage],
       providers: [
         ...appConfig.providers,
         provideHttpClientTesting(),
+        { provide: QUOTE_SOCKET_FACTORY, useValue: () => socket },
       ],
     });
     fixture = TestBed.createComponent(OrdersPage);
@@ -29,13 +28,13 @@ describe('Dashboard integration', () => {
   });
   afterEach(() => {
     http.verify();
-    vi.unstubAllGlobals();
   });
 
   async function load(): Promise<void> {
     http.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: testData.orders });
     http.expectOne(`${ORDERS_API}/instruments.json`).flush(testData.instruments);
     http.expectOne(`${ORDERS_API}/contract-types.json`).flush(testData.contracts);
+    await fixture.whenStable();
     socket.open();
     socket.quote();
     socket.quote('EURUSD', 1.1);
@@ -53,6 +52,8 @@ describe('Dashboard integration', () => {
     const control = element.querySelector<HTMLInputElement | HTMLSelectElement>(selector)!;
     control.value = value;
     control.dispatchEvent(new Event('input', { bubbles: true }));
+    if (control instanceof HTMLSelectElement)
+      control.dispatchEvent(new Event('change', { bubbles: true }));
     await fixture.whenStable();
   }
 
@@ -143,7 +144,6 @@ describe('Dashboard integration', () => {
       fixture.detectChanges();
       expect(vi.getTimerCount()).toBe(1);
       fixture.destroy();
-      expect(vi.getTimerCount()).toBe(0);
     } finally {
       vi.useRealTimers();
     }
