@@ -7,6 +7,7 @@ describe('OrdersTable', () => {
   it('does not toggle a group when its close button is pressed', () => {
     const fixture = TestBed.createComponent(OrdersTable);
     fixture.componentRef.setInput('groups', groupOrders(testData.orders, new Map(), new Map()));
+    fixture.componentRef.setInput('expanded', new Set());
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     const closed = vi.fn();
@@ -29,8 +30,7 @@ describe('OrdersTable', () => {
         buildContractSizes(testData.instruments, testData.contracts),
       ),
     );
-    fixture.detectChanges();
-    fixture.componentInstance.expand('BTCUSD');
+    fixture.componentRef.setInput('expanded', new Set(['BTCUSD']));
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.date')?.textContent).toBe('20.06.2025 18:30:22');

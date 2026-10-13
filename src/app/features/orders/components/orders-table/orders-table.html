@@ -49,19 +49,7 @@
           <td class="table-cell"></td>
           <td class="table-cell number">{{ group.openPrice | number: '1.0-8' }}</td>
           <td class="table-cell number">{{ group.swap | number: '1.0-8' }}</td>
-          <td
-            class="table-cell number profit"
-            [class.positive]="group.profit !== null && group.profit > 0"
-            [class.negative]="group.profit !== null && group.profit < 0"
-            [attr.title]="group.profitUnavailableReason"
-          >
-            @if (group.profit !== null) {
-              {{ group.profit | number: '1.2-8' }}
-            } @else {
-              <span aria-hidden="true">—</span
-              ><span class="sr-only">{{ group.profitUnavailableReason }}</span>
-            }
-          </td>
+          <td appProfitCell [value]="group.profit" [reason]="group.profitUnavailableReason"></td>
           <td class="table-cell action">
             <button
               class="icon-button close-button"
@@ -86,18 +74,10 @@
               <td class="table-cell number">{{ order.openPrice | number: '1.0-8' }}</td>
               <td class="table-cell number">{{ order.swap | number: '1.0-8' }}</td>
               <td
-                class="table-cell number profit"
-                [class.positive]="order.profit !== null && order.profit > 0"
-                [class.negative]="order.profit !== null && order.profit < 0"
-                [attr.title]="group.profitUnavailableReason"
-              >
-                @if (order.profit !== null) {
-                  {{ order.profit | number: '1.2-8' }}
-                } @else {
-                  <span aria-hidden="true">—</span
-                  ><span class="sr-only">{{ group.profitUnavailableReason }}</span>
-                }
-              </td>
+                appProfitCell
+                [value]="order.profit"
+                [reason]="group.profitUnavailableReason"
+              ></td>
               <td class="table-cell action">
                 <button
                   class="icon-button close-button"

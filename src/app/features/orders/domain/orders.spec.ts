@@ -39,7 +39,7 @@ describe('Order calculations', () => {
     expect(calculateProfit(order, testQuote('BTCUSD', 0.000002), 100000)).toBeCloseTo(0.003, 12);
     const [group] = groupOrders([order], new Map([['BTCUSD', testQuote()]]), new Map());
     expect(group.profit).toBeNull();
-    expect(group.profitUnavailableReason).toContain('kontraktu');
+    expect(group.profitUnavailableReason).toBe('missing-contract');
   });
 
   it('handles an empty collection and an overflow without displaying Infinity', () => {

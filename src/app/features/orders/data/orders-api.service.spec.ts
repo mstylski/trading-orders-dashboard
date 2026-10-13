@@ -54,9 +54,7 @@ describe('OrdersApiService', () => {
     const error = vi.fn();
     api.load().subscribe({ error });
     flush(orders);
-    expect(error).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Nieprawidłowe dane: zlecenia.' }),
-    );
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ resource: 'orders' }));
   });
 
   it('rejects invalid contract sizes', () => {

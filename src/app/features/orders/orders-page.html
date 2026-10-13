@@ -2,7 +2,8 @@
   <header class="topbar">
     <a class="brand" href="./" aria-label="Trading Desk — strona główna">
       <span class="brand-mark" aria-hidden="true"
-        ><svg viewBox="0 0 24 24" width="22" height="22"><path class="brand-mark-path" d="M5 17V10m7 7V5m7 12v-7" /></svg
+        ><svg viewBox="0 0 24 24" width="22" height="22">
+          <path class="brand-mark-path" d="M5 17V10m7 7V5m7 12v-7" /></svg
       ></span>
       <span>Trading<span class="brand-light">Desk</span></span>
     </a>
@@ -33,7 +34,11 @@
           id="new-order-panel"
           [symbols]="store.symbols()"
           [price]="store.selectedPrice()"
-          [unavailableReason]="store.unavailablePriceReason()"
+          [unavailableReason]="
+            store.unavailablePriceReason()
+              ? priceReasonLabel[store.unavailablePriceReason()!]
+              : null
+          "
           [submitError]="formError()"
           (symbolChange)="selectSymbol($event)"
           (submitted)="addOrder($event)"
@@ -100,7 +105,8 @@
             <app-orders-table
               [groups]="store.groups()"
               [stale]="store.hasStaleQuotes()"
-              [newlyAdded]="newlyAdded()"
+              [expanded]="expanded()"
+              (toggleGroup)="toggleGroup($event)"
               (closeOrder)="closeOrder($event)"
               (closeGroup)="closeGroup($event)"
             />
@@ -130,4 +136,7 @@
     </footer>
   </main>
 </div>
-<app-notifications [messages]="notifications()" (dismiss)="dismiss($event)" />
+<app-notifications
+  [messages]="notifications.messages()"
+  (dismiss)="notifications.dismiss($event)"
+/>

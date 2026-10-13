@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { forkJoin, map, Observable } from 'rxjs';
 import { OrdersData } from '../models/order.models';
-import { isContract, isInstrument, isOrder, validateList } from './orders-api.helpers';
-import { isRecord } from './validation';
+import { isContract, isInstrument, isOrder, validateList } from './order.guards';
+import { isRecord } from '../../../shared/util/type-guards';
 
 export const ORDERS_API = 'https://geeksoft.pl/assets/2026-task';
 
@@ -22,19 +22,19 @@ export class OrdersApiService {
           isRecord(orders) ? orders['data'] : undefined,
           isOrder,
           (order) => order.id,
-          'zlecenia',
+          'orders',
         ),
         instruments: validateList(
           instruments,
           isInstrument,
           (instrument) => instrument.symbol,
-          'instrumenty',
+          'instruments',
         ),
         contracts: validateList(
           contracts,
           isContract,
           (contract) => contract.contractType,
-          'typy kontraktów',
+          'contracts',
         ),
       })),
     );

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { ThemeService } from '../../../../core/theme.service';
+import { isThemePreference, ThemeService } from '../../../core/theme.service';
 
 @Component({
   selector: 'app-theme-switcher',
@@ -9,4 +9,8 @@ import { ThemeService } from '../../../../core/theme.service';
 })
 export class ThemeSwitcher {
   protected readonly theme = inject(ThemeService);
+
+  protected changePreference(value: string): void {
+    if (isThemePreference(value)) this.theme.setPreference(value);
+  }
 }

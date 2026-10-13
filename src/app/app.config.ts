@@ -10,5 +10,5 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(),
     { provide: LOCALE_ID, useValue: 'pl' },
-  ]
+  ],
 };

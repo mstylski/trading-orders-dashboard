@@ -1,32 +1,14 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  effect,
-  ElementRef,
-  inject,
-  input,
-  output,
-  signal,
-  untracked,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output, signal } from '@angular/core';
 import { form, FormField, FormRoot, required, validate } from '@angular/forms/signals';
 import { DecimalPipe } from '@angular/common';
 import { NewOrder, OrderSide } from '../../models/order.models';
-import { localDateTime, parseLocalDateTime } from './order-form.helpers';
+import { localDateTime, parseLocalDateTime, parseVolume, volumeError } from './order-form.helpers';
 
 interface OrderFormModel {
   symbol: string;
   side: OrderSide;
   size: string;
   openTime: string;
-}
-
-const volumePattern = /^\d+(?:[.,]\d+)?$/;
-
-function parseVolume(value: string): number | null {
-  if (!volumePattern.test(value)) return null;
-  const volume = Number(value.replace(',', '.'));
-  return Number.isFinite(volume) && volume > 0 ? volume : null;
 }
 
 @Component({
@@ -44,7 +26,6 @@ export class OrderForm {
   readonly symbolChange = output<string>();
   readonly submitted = output<NewOrder>();
   readonly cancelled = output<void>();
-  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
 
   private readonly model = signal<OrderFormModel>({
     symbol: '',
@@ -68,35 +49,20 @@ export class OrderForm {
           ? null
           : { kind: 'side', message: 'Wybierz BUY lub SELL.' },
       );
-      required(path.size, { message: 'Podaj wolumen.' });
-      validate(path.size, ({ value }) =>
-        !value() || volumePattern.test(value())
-          ? null
-          : { kind: 'pattern', message: 'Podaj wolumen w postaci liczby, np. 0,05.' },
-      );
-      validate(path.size, ({ value }) => {
-        const size = value();
-        return !size || !volumePattern.test(size) || parseVolume(size) !== null
-          ? null
-          : { kind: 'positive', message: 'Podaj wolumen większy od zera.' };
-      });
+      validate(path.size, ({ value }) => volumeError(value()));
       required(path.openTime, { message: 'Podaj datę i czas.' });
       validate(path.openTime, ({ value }) =>
         !value() || parseLocalDateTime(value()) !== null
           ? null
           : { kind: 'date', message: 'Podaj poprawną datę i czas.' },
       );
-      validate(path, () => {
-        const reason = this.unavailableReason();
-        const price = this.price();
-        return reason || price === null || !Number.isFinite(price) || price <= 0
-          ? { kind: 'quote', message: reason ?? 'Oczekiwanie na poprawną bieżącą cenę.' }
-          : null;
-      });
     },
     {
       submission: {
         action: async () => {
+          const price = this.price();
+          if (this.unavailableReason() || price === null || !Number.isFinite(price) || price <= 0)
+            return;
           const value = this.model();
           const openTime = parseLocalDateTime(value.openTime);
           const size = parseVolume(value.size);
@@ -113,10 +79,9 @@ export class OrderForm {
     },
   );
 
-  constructor() {
-    effect(() => {
-      const symbol = this.form.symbol().value();
-      untracked(() => this.symbolChange.emit(symbol));
-    });
+  onSymbolChange(event: Event): void {
+    const symbol = (event.target as HTMLSelectElement).value;
+    this.form.symbol().value.set(symbol);
+    this.symbolChange.emit(symbol);
   }
 }

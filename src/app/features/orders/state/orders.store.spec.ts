@@ -5,6 +5,7 @@ import { ORDERS_API } from '../data/orders-api.service';
 import { QuotesService } from '../data/quotes.service';
 import { NewOrder, OrdersData } from '../models/order.models';
 import { FakeSocket, testData } from '../testing/fixtures';
+import { QUOTE_SOCKET_FACTORY } from '../data/quote-socket';
 import { OrdersStore } from './orders.store';
 
 describe('OrdersStore', () => {
@@ -15,17 +16,18 @@ describe('OrdersStore', () => {
 
   beforeEach(() => {
     sockets = [];
-    vi.stubGlobal('WebSocket', function () {
+    const createSocket = () => {
       const socket = new FakeSocket();
       sockets.push(socket);
       return socket;
-    });
+    };
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         OrdersStore,
         QuotesService,
+        { provide: QUOTE_SOCKET_FACTORY, useValue: createSocket },
       ],
     });
     store = TestBed.inject(OrdersStore);
@@ -33,7 +35,6 @@ describe('OrdersStore', () => {
   });
   afterEach(() => {
     http.verify();
-    vi.unstubAllGlobals();
   });
 
   function load(data: OrdersData = testData): FakeSocket {
@@ -41,6 +42,7 @@ describe('OrdersStore', () => {
     http.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: data.orders });
     http.expectOne(`${ORDERS_API}/instruments.json`).flush(data.instruments);
     http.expectOne(`${ORDERS_API}/contract-types.json`).flush(data.contracts);
+    TestBed.tick();
     sockets[0].open();
     return sockets[0];
   }
@@ -72,6 +74,7 @@ describe('OrdersStore', () => {
     const socket = load();
     socket.quote();
     expect(store.closeOrder(10)).toEqual([10]);
+    TestBed.tick();
     expect(store.groups().find((group) => group.symbol === 'BTCUSD')).toMatchObject({
       count: 1,
       size: 1,
@@ -80,6 +83,7 @@ describe('OrdersStore', () => {
     });
     expect(socket.sent).toHaveLength(1);
     expect(store.closeGroup('BTCUSD')).toEqual([20]);
+    TestBed.tick();
     expect(socket.sent.at(-1)).toEqual({ p: '/subscribe/removelist', d: ['BTCUSD'] });
     expect(store.closeOrder(999)).toEqual([]);
     expect(store.symbols()).toEqual(['BTCUSD', 'EURUSD']);
@@ -89,8 +93,10 @@ describe('OrdersStore', () => {
     const socket = load();
     store.selectFormSymbol('BTCUSD');
     expect(store.closeGroup('BTCUSD')).toEqual([10, 20]);
+    TestBed.tick();
     expect(socket.sent).toHaveLength(1);
     store.selectFormSymbol(null);
+    TestBed.tick();
     expect(socket.sent.at(-1)).toEqual({ p: '/subscribe/removelist', d: ['BTCUSD'] });
   });
 
@@ -99,10 +105,12 @@ describe('OrdersStore', () => {
     socket.quote();
     store.closeGroup('BTCUSD');
     store.closeGroup('EURUSD');
+    TestBed.tick();
     expect(store.groups()).toEqual([]);
     store.selectFormSymbol('BTCUSD');
+    TestBed.tick();
     expect(socket.sent.at(-1)).toEqual({ p: '/subscribe/addlist', d: ['BTCUSD'] });
-    expect(store.unavailablePriceReason()).toContain('świeże');
+    expect(store.unavailablePriceReason()).toBe('awaiting-quote');
     expect(store.addOrder(input)).toHaveProperty('error');
     socket.quote('BTCUSD', 115);
     expect(store.unavailablePriceReason()).toBeNull();
@@ -149,7 +157,7 @@ describe('OrdersStore', () => {
     socket.quote();
     store.selectFormSymbol('BTCUSD');
     expect(store.groups()[0].profit).toBeNull();
-    expect(store.unavailablePriceReason()).toContain('kontraktu');
+    expect(store.unavailablePriceReason()).toBe('missing-contract');
     expect(store.addOrder(input)).toHaveProperty('error');
   });
 
