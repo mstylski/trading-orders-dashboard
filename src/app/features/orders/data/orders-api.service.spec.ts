@@ -77,4 +77,20 @@ describe('OrdersApiService', () => {
     flush();
     expect(next).toHaveBeenCalledWith(testData);
   });
+
+  it('ends a stalled load within five seconds and cancels all pending requests', () => {
+    vi.useFakeTimers();
+    try {
+      const error = vi.fn();
+      api.load().subscribe({ error });
+      const requests = http.match(() => true);
+      requests[0].flush({ data: testData.orders });
+      vi.advanceTimersByTime(5_000);
+      expect(error).toHaveBeenCalledOnce();
+      expect(requests[1].cancelled).toBe(true);
+      expect(requests[2].cancelled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

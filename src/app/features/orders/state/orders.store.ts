@@ -1,6 +1,16 @@
-import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injectable,
+  PLATFORM_ID,
+  RESPONSE_INIT,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
+import { isPlatformBrowser } from '@angular/common';
 import { OrdersApiService } from '../data/orders-api.service';
 import { InvalidPayloadError } from '../data/order.guards';
 import { QuotesService } from '../data/quotes.service';
@@ -20,6 +30,7 @@ export class OrdersStore {
   private readonly api = inject(OrdersApiService);
   private readonly quoteService = inject(QuotesService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly responseInit = inject(RESPONSE_INIT, { optional: true });
   private readonly orderState = signal<readonly Order[]>([]);
   private readonly symbolState = signal<readonly string[]>([]);
   private readonly contractState = signal<ContractSizeBySymbol>(new Map());
@@ -68,10 +79,12 @@ export class OrdersStore {
   });
 
   constructor() {
-    effect(() => {
-      const symbols = this.desiredSymbols();
-      if (symbols) this.quoteService.setSymbols(symbols);
-    });
+    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+      effect(() => {
+        const symbols = this.desiredSymbols();
+        if (symbols) this.quoteService.setSymbols(symbols);
+      });
+    }
   }
 
   // Load and validate the initial snapshot.
@@ -97,6 +110,9 @@ export class OrdersStore {
   }
 
   private handleLoadError(error: unknown): void {
+    if (this.responseInit) {
+      this.responseInit.status = error instanceof InvalidPayloadError ? 502 : 503;
+    }
     this.loadingState.set('error');
     if (error instanceof InvalidPayloadError) {
       const resourceLabel = {

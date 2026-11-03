@@ -5,62 +5,50 @@
     <title>Otwarte zlecenia | Trading Desk</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      let theme = 'system';
+      try {
+        const saved = localStorage.getItem('trading-orders-theme');
+        if (saved === 'light' || saved === 'dark') {
+          theme = saved;
+        }
+      } catch {}
+      document.documentElement.dataset.theme =
+        theme === 'system'
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+          : theme;
+    </script>
+    <style>
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --background: rgb(42, 56, 71);
+        --text: rgb(198, 210, 219);
+        --row: rgba(14, 15, 26, 0.25);
+        --row-hover: rgba(53, 71, 89, 0.5);
+        --surface: #263342;
+        --detail: #293747;
+        --muted: #a0b0c0;
+        --border: #415161;
+        --border-soft: #344555;
+        --accent: #3cc195;
+        --accent-contrast: #102b24;
+        --focus: #80beff;
+        --buy-bg: #25493f;
+        --buy-text: #83dbb9;
+        --sell-bg: #4b3540;
+        --sell-text: #ffadb5;
+        --warning: #e9b65a;
+        --warning-text: #e9c788;
+        --error-text: #ffacb3;
+      }
+    </style>
     <meta name="description" content="Panel zleceń z bieżącymi kwotowaniami i wynikami pozycji." />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://geeksoft.pl" crossorigin />
-    <style>
-      .initial-shell {
-        max-width: 1720px;
-        margin: 0 auto;
-        padding: 0 40px;
-      }
-      .initial-topbar {
-        display: flex;
-        align-items: center;
-        height: 76px;
-        border-bottom: 1px solid var(--border, #c7cfd6);
-        font-size: 17.6px;
-        font-weight: 750;
-        letter-spacing: -0.04em;
-      }
-      .initial-topbar span {
-        font-weight: 400;
-        margin-left: 3.2px;
-      }
-      .initial-main {
-        padding-top: 44px;
-      }
-      .initial-eyebrow {
-        margin: 0 0 9.6px;
-        color: var(--muted, #566675);
-        font-size: 10px;
-        letter-spacing: 0.16em;
-        font-weight: 700;
-      }
-      .initial-main h1 {
-        margin: 0 0 10.4px;
-        font-size: clamp(26.4px, 3vw, 33.6px);
-        line-height: 1.2;
-        letter-spacing: -0.045em;
-        font-weight: 650;
-      }
-      .initial-subtitle {
-        margin: 0;
-        color: var(--muted, #566675);
-        font-size: 14px;
-      }
-    </style>
   </head>
   <body>
-    <app-orders-page>
-      <div class="initial-shell">
-        <header class="initial-topbar">Trading<span>Desk</span></header>
-        <main class="initial-main">
-          <p class="initial-eyebrow">PANEL TRANSAKCYJNY</p>
-          <h1>Otwarte zlecenia</h1>
-          <p class="initial-subtitle">Twoje pozycje i bieżące wyniki w jednym miejscu.</p>
-        </main>
-      </div>
-    </app-orders-page>
+    <app-orders-page></app-orders-page>
   </body>
 </html>

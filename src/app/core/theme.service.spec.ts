@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { DOCUMENT } from '@angular/common';
+import { PLATFORM_ID } from '@angular/core';
 import { THEME_STORAGE_KEY, ThemeService } from './theme.service';
 
 describe('ThemeService', () => {
@@ -59,5 +61,18 @@ describe('ThemeService', () => {
     expect(() => theme.setPreference('light')).not.toThrow();
     expect(theme.resolved()).toBe('light');
     spy.mockRestore();
+  });
+
+  it('does not access browser DOM or storage on the server', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: DOCUMENT, useValue: { defaultView: undefined } },
+      ],
+    });
+    const theme = TestBed.inject(ThemeService);
+    expect(() => TestBed.tick()).not.toThrow();
+    expect(theme.resolved()).toBe('light');
+    expect(() => theme.setPreference('dark')).not.toThrow();
   });
 });

@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { PLATFORM_ID, RESPONSE_INIT } from '@angular/core';
 import { ORDERS_API } from '../data/orders-api.service';
 import { QuotesService } from '../data/quotes.service';
 import { NewOrder, OrdersData } from '../models/order.models';
@@ -188,5 +189,66 @@ describe('OrdersStore', () => {
     TestBed.resetTestingModule();
     expect(requests.every((request) => request.cancelled)).toBe(true);
     expect(sockets).toHaveLength(0);
+  });
+});
+
+describe('OrdersStore on the server', () => {
+  it('sets an error HTTP status for failed upstream data and keeps retry available', () => {
+    const responseInit: ResponseInit = {};
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        OrdersStore,
+        QuotesService,
+        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: RESPONSE_INIT, useValue: responseInit },
+      ],
+    });
+    const serverStore = TestBed.inject(OrdersStore);
+    const serverHttp = TestBed.inject(HttpTestingController);
+    serverStore.load();
+    const requests = serverHttp.match(() => true);
+    requests[0].flush('Unavailable', { status: 503, statusText: 'Unavailable' });
+    expect(responseInit.status).toBe(503);
+    expect(serverStore.status()).toBe('error');
+    serverStore.load();
+    serverHttp.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: testData.orders });
+    serverHttp.expectOne(`${ORDERS_API}/instruments.json`).flush(testData.instruments);
+    serverHttp.expectOne(`${ORDERS_API}/contract-types.json`).flush(testData.contracts);
+    expect(serverStore.status()).toBe('ready');
+    serverHttp.verify();
+  });
+
+  it('loads REST data without creating a socket or reconnect timer', () => {
+    vi.useFakeTimers();
+    const createSocket = vi.fn(() => new FakeSocket());
+    try {
+      TestBed.configureTestingModule({
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          OrdersStore,
+          QuotesService,
+          { provide: PLATFORM_ID, useValue: 'server' },
+          { provide: QUOTE_SOCKET_FACTORY, useValue: createSocket },
+        ],
+      });
+      const serverStore = TestBed.inject(OrdersStore);
+      const serverHttp = TestBed.inject(HttpTestingController);
+      serverStore.load();
+      serverHttp.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: testData.orders });
+      serverHttp.expectOne(`${ORDERS_API}/instruments.json`).flush(testData.instruments);
+      serverHttp.expectOne(`${ORDERS_API}/contract-types.json`).flush(testData.contracts);
+      TestBed.tick();
+      expect(serverStore.status()).toBe('ready');
+      expect(serverStore.groups()).toHaveLength(2);
+      expect(createSocket).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      serverHttp.verify();
+    } finally {
+      TestBed.resetTestingModule();
+      vi.useRealTimers();
+    }
   });
 });

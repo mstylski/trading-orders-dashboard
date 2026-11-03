@@ -1,5 +1,13 @@
-import { DOCUMENT } from '@angular/common';
-import { computed, DestroyRef, effect, inject, Injectable, signal } from '@angular/core';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injectable,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export const THEME_STORAGE_KEY = 'trading-orders-theme';
@@ -11,7 +19,8 @@ export function isThemePreference(value: string): value is ThemePreference {
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
-  private readonly window = this.document.defaultView;
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly window = this.isBrowser ? this.document.defaultView : null;
   private readonly media = this.window?.matchMedia?.('(prefers-color-scheme: dark)');
   private readonly systemDark = signal(this.media?.matches ?? false);
   private readonly preferenceState = signal<ThemePreference>(this.readPreference());
@@ -21,6 +30,7 @@ export class ThemeService {
   );
 
   constructor() {
+    if (!this.isBrowser) return;
     const onChange = (event: MediaQueryListEvent) => this.systemDark.set(event.matches);
     this.media?.addEventListener('change', onChange);
     inject(DestroyRef).onDestroy(() => this.media?.removeEventListener('change', onChange));
