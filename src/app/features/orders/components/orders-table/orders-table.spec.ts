@@ -1,12 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { OrdersTable } from './orders-table';
-import { buildContractSizes, groupOrders } from '../../domain/orders';
-import { testData, testQuote } from '../../testing/fixtures';
+import { buildContractSizes } from '../../domain/orders';
+import { groupOrders, testData, testQuote } from '../../testing/fixtures';
 
 describe('OrdersTable', () => {
   it('does not toggle a group when its close button is pressed', () => {
     const fixture = TestBed.createComponent(OrdersTable);
     fixture.componentRef.setInput('groups', groupOrders(testData.orders, new Map(), new Map()));
+    fixture.componentRef.setInput(
+      'quoteFreshness',
+      new Map([
+        ['BTCUSD', 'waiting'],
+        ['EURUSD', 'waiting'],
+      ]),
+    );
     fixture.componentRef.setInput('expanded', new Set());
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
@@ -31,10 +38,12 @@ describe('OrdersTable', () => {
       ),
     );
     fixture.componentRef.setInput('expanded', new Set(['BTCUSD']));
+    fixture.componentRef.setInput('quoteFreshness', new Map([['BTCUSD', 'current']]));
     fixture.detectChanges();
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('.date')?.textContent).toBe('20.06.2025 18:30:22');
     expect(element.querySelector('.profit')?.className).not.toContain('positive');
     expect(element.querySelector('.profit')?.className).not.toContain('negative');
+    expect(element.querySelector('.quote-status')?.textContent).toContain('Cena aktualna');
   });
 });

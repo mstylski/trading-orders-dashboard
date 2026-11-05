@@ -34,14 +34,6 @@ export function calculateProfit(
   return Number.isFinite(profit) ? profit : null;
 }
 
-export function groupOrders(
-  orders: readonly Order[],
-  quotes: Quotes,
-  contractSizes: ContractSizeBySymbol,
-): readonly OrderGroup[] {
-  return applyQuotes(prepareOrderGroups(orders), quotes, contractSizes);
-}
-
 export interface GroupedOrders {
   readonly symbol: string;
   readonly count: number;

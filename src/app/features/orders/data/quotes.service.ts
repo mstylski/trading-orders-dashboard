@@ -1,5 +1,5 @@
 import { DestroyRef, inject, Injectable, signal } from '@angular/core';
-import { ConnectionStatus, Quotes } from '../models/order.models';
+import { ConnectionStatus, Quote, Quotes } from '../models/order.models';
 import { QUOTES_URL, QUOTE_SOCKET_FACTORY, QuoteSocket } from './quote-socket';
 import { parseQuoteMessage } from './quote-message.guards';
 
@@ -7,6 +7,8 @@ const CONNECT_TIMEOUT_MS = 10_000;
 const INITIAL_RETRY_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 30_000;
 const MAX_BACKOFF_EXPONENT = 5;
+const HEARTBEAT_INTERVAL_MS = 30_000;
+const HEARTBEAT_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class QuotesService {
@@ -21,9 +23,12 @@ export class QuotesService {
   private socket: QuoteSocket | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
   private connectionTimer: ReturnType<typeof setTimeout> | undefined;
+  private heartbeatTimer: ReturnType<typeof setTimeout> | undefined;
+  private heartbeatTimeout: ReturnType<typeof setTimeout> | undefined;
   private retryAttempt = 0;
 
   readonly quotes = this.quoteState.asReadonly();
+  readonly fresh = this.freshSymbols.asReadonly();
   readonly status = this.statusState.asReadonly();
   readonly retryDelay = this.retryDelayState.asReadonly();
 
@@ -68,12 +73,38 @@ export class QuotesService {
       this.retryAttempt = 0;
       this.statusState.set('connected');
       this.syncSubscriptions();
+      this.scheduleHeartbeat(socket);
     };
     socket.onmessage = (event) => {
-      if (this.socket === socket && this.status() === 'connected') this.receive(event.data);
+      if (this.socket !== socket || this.status() !== 'connected') return;
+      const { quotes, acknowledged } = parseQuoteMessage(event.data, this.subscribedSymbols);
+      if (acknowledged) this.acknowledgeHeartbeat(socket);
+      this.receive(quotes);
     };
     socket.onerror = () => this.disconnect(socket);
     socket.onclose = () => this.disconnect(socket);
+  }
+
+  private scheduleHeartbeat(socket: QuoteSocket): void {
+    clearTimeout(this.heartbeatTimer);
+    this.heartbeatTimer = setTimeout(() => {
+      this.heartbeatTimer = undefined;
+      if (this.socket !== socket || this.status() !== 'connected') return;
+      try {
+        socket.send(JSON.stringify({ p: '/subscribe/addlist', d: [...this.subscribedSymbols] }));
+      } catch {
+        this.disconnect(socket);
+        return;
+      }
+      this.heartbeatTimeout = setTimeout(() => this.disconnect(socket), HEARTBEAT_TIMEOUT_MS);
+    }, HEARTBEAT_INTERVAL_MS);
+  }
+
+  private acknowledgeHeartbeat(socket: QuoteSocket): void {
+    if (!this.heartbeatTimeout) return;
+    clearTimeout(this.heartbeatTimeout);
+    this.heartbeatTimeout = undefined;
+    this.scheduleHeartbeat(socket);
   }
 
   private syncSubscriptions(): void {
@@ -92,11 +123,12 @@ export class QuotesService {
     }
   }
 
-  private receive(data: unknown): void {
+  private receive(incoming: readonly Quote[]): void {
+    if (!incoming.length) return;
     const quotes = new Map(this.quotes());
     const fresh = new Set(this.freshSymbols());
     let changed = false;
-    for (const quote of parseQuoteMessage(data, this.subscribedSymbols)) {
+    for (const quote of incoming) {
       const previous = quotes.get(quote.symbol);
       if (previous && previous.timestamp > quote.timestamp) continue;
       quotes.set(quote.symbol, quote);
@@ -133,7 +165,11 @@ export class QuotesService {
 
   private releaseSocket(): void {
     clearTimeout(this.connectionTimer);
+    clearTimeout(this.heartbeatTimer);
+    clearTimeout(this.heartbeatTimeout);
     this.connectionTimer = undefined;
+    this.heartbeatTimer = undefined;
+    this.heartbeatTimeout = undefined;
     if (this.socket) {
       this.socket.onopen = this.socket.onmessage = this.socket.onerror = this.socket.onclose = null;
       this.socket.close();

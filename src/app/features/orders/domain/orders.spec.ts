@@ -1,5 +1,5 @@
-import { buildContractSizes, calculateProfit, groupOrders } from './orders';
-import { testData, testOrders, testQuote } from '../testing/fixtures';
+import { buildContractSizes, calculateProfit } from './orders';
+import { groupOrders, testData, testOrders, testQuote } from '../testing/fixtures';
 
 describe('Order calculations', () => {
   it('joins contract sizes through instrument contractType', () => {

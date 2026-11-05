@@ -7,6 +7,7 @@ import {
   PLATFORM_ID,
   RESPONSE_INIT,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -49,6 +50,24 @@ export class OrdersStore {
   readonly quotes = this.quoteService.quotes;
   readonly connectionStatus = this.quoteService.status;
   readonly retryDelay = this.quoteService.retryDelay;
+  readonly quoteFreshness = computed(() => {
+    const quotes = this.quotes();
+    const fresh = this.quoteService.fresh();
+    const connected = this.connectionStatus() === 'connected';
+    return new Map(
+      this.groups().map(
+        (group) =>
+          [
+            group.symbol,
+            !quotes.has(group.symbol)
+              ? 'waiting'
+              : connected && fresh.has(group.symbol)
+                ? 'current'
+                : 'stale',
+          ] as const,
+      ),
+    );
+  });
   private readonly groupedOrders = computed(() => prepareOrderGroups(this.orders()));
   readonly groups = computed(() =>
     applyQuotes(this.groupedOrders(), this.quotes(), this.contractSizes()),
@@ -65,11 +84,6 @@ export class OrdersStore {
     if ((this.selectedPrice() ?? 0) <= 0) return 'invalid-price';
     return null;
   });
-  readonly hasStaleQuotes = computed(() =>
-    this.orders().some(
-      (order) => this.quotes().has(order.symbol) && !this.quoteService.isFresh(order.symbol),
-    ),
-  );
   private readonly desiredSymbols = computed(() => {
     if (this.status() !== 'ready') return null;
     const symbols = new Set(this.orders().map((order) => order.symbol));
@@ -82,7 +96,7 @@ export class OrdersStore {
     if (isPlatformBrowser(inject(PLATFORM_ID))) {
       effect(() => {
         const symbols = this.desiredSymbols();
-        if (symbols) this.quoteService.setSymbols(symbols);
+        if (symbols) untracked(() => this.quoteService.setSymbols(symbols));
       });
     }
   }

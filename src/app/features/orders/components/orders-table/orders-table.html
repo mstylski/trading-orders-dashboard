@@ -1,5 +1,5 @@
 <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela zleceń, przewijana poziomo">
-  <table class="orders-table" [class.stale]="stale()">
+  <table class="orders-table">
     <caption class="sr-only">
       Zlecenia pogrupowane według symbolu. Rozwiń grupę, aby zobaczyć szczegóły.
     </caption>
@@ -18,7 +18,11 @@
     </thead>
     @for (group of groups(); track group.symbol) {
       <tbody class="group-body">
-        <tr class="group-row" (click)="toggle(group.symbol)">
+        <tr
+          class="group-row"
+          [class.stale]="quoteFreshness().get(group.symbol) === 'stale'"
+          (click)="toggle(group.symbol)"
+        >
           <th class="table-cell group-symbol-cell" scope="row">
             <button
               class="group-toggle"
@@ -42,13 +46,24 @@
               <span>{{ group.symbol }}</span
               ><span class="count">{{ group.count }}</span>
             </button>
+            @switch (quoteFreshness().get(group.symbol)) {
+              @case ('current') {
+                <span class="quote-status current">Cena aktualna</span>
+              }
+              @case ('stale') {
+                <span class="quote-status stale-label">Cena nieaktualna</span>
+              }
+              @default {
+                <span class="quote-status waiting">Oczekiwanie na cenę</span>
+              }
+            }
           </th>
           <td class="table-cell"></td>
           <td class="table-cell"></td>
-          <td class="table-cell number">{{ group.size | number: '1.0-8' }}</td>
+          <td class="table-cell number">{{ group.size | number: '1.2-2' }}</td>
           <td class="table-cell"></td>
-          <td class="table-cell number">{{ group.openPrice | number: '1.0-8' }}</td>
-          <td class="table-cell number">{{ group.swap | number: '1.0-8' }}</td>
+          <td class="table-cell number">{{ group.openPrice | number: '1.0-4' }}</td>
+          <td class="table-cell number">{{ group.swap | number: '1.2-2' }}</td>
           <td appProfitCell [value]="group.profit" [reason]="group.profitUnavailableReason"></td>
           <td class="table-cell action">
             <button
@@ -63,16 +78,16 @@
         </tr>
         @if (expanded().has(group.symbol)) {
           @for (order of group.orders; track order.id) {
-            <tr class="order-row">
+            <tr class="order-row" [class.stale]="quoteFreshness().get(group.symbol) === 'stale'">
               <td class="table-cell order-symbol">{{ order.symbol }}</td>
               <th scope="row" class="table-cell order-id">{{ order.id }}</th>
               <td class="table-cell">
                 <span class="side" [class.sell]="order.side === 'SELL'">{{ order.side }}</span>
               </td>
-              <td class="table-cell number">{{ order.size | number: '1.0-8' }}</td>
+              <td class="table-cell number">{{ order.size | number: '1.2-2' }}</td>
               <td class="table-cell date">{{ order.openTime | date: 'dd.MM.yyyy HH:mm:ss' }}</td>
-              <td class="table-cell number">{{ order.openPrice | number: '1.0-8' }}</td>
-              <td class="table-cell number">{{ order.swap | number: '1.0-8' }}</td>
+              <td class="table-cell number">{{ order.openPrice | number: '1.0-4' }}</td>
+              <td class="table-cell number">{{ order.swap | number: '1.2-2' }}</td>
               <td
                 appProfitCell
                 [value]="order.profit"

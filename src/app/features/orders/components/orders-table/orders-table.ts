@@ -12,7 +12,7 @@ import { ProfitCell } from './profit-cell';
 })
 export class OrdersTable {
   readonly groups = input.required<readonly OrderGroup[]>();
-  readonly stale = input(false);
+  readonly quoteFreshness = input.required<ReadonlyMap<string, 'waiting' | 'current' | 'stale'>>();
   readonly expanded = input.required<ReadonlySet<string>>();
   readonly closeOrder = output<number>();
   readonly closeGroup = output<string>();

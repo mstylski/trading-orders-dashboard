@@ -124,6 +124,41 @@ describe('QuotesService', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('detects an open socket that stops answering subscription probes', () => {
+    quotes.setSymbols(['BTCUSD']);
+    sockets[0].open();
+    vi.advanceTimersByTime(30_000);
+    expect(sockets[0].sent.at(-1)).toEqual({ p: '/subscribe/addlist', d: ['BTCUSD'] });
+    sockets[0].message('{');
+    sockets[0].message({ p: '/quotes/subscribed', d: [{ s: 'BTCUSD', b: 'bad' }] });
+    vi.advanceTimersByTime(10_000);
+    expect(sockets[0].closeCount).toBe(1);
+    expect(quotes.status()).toBe('reconnecting');
+    vi.advanceTimersByTime(1_000);
+    expect(sockets).toHaveLength(2);
+  });
+
+  it('accepts a probe acknowledgement without any market ticks', () => {
+    quotes.setSymbols(['BTCUSD']);
+    sockets[0].open();
+    vi.advanceTimersByTime(30_000);
+    sockets[0].message({ p: '/subscribe/addlist', i: 0 });
+    vi.advanceTimersByTime(39_999);
+    expect(quotes.status()).toBe('connected');
+    expect(sockets[0].closeCount).toBe(0);
+    expect(quotes.isFresh('BTCUSD')).toBe(false);
+  });
+
+  it('accepts valid quote traffic as proof of transport life', () => {
+    quotes.setSymbols(['BTCUSD']);
+    sockets[0].open();
+    vi.advanceTimersByTime(30_000);
+    sockets[0].quote();
+    vi.advanceTimersByTime(10_000);
+    expect(quotes.status()).toBe('connected');
+    expect(sockets[0].closeCount).toBe(0);
+  });
+
   it('closes a live socket and removes its handlers on destroy', () => {
     quotes.setSymbols(['BTCUSD']);
     sockets[0].open();

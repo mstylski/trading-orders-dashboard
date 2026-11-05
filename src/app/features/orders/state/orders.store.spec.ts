@@ -139,6 +139,16 @@ describe('OrdersStore', () => {
     expect(store.addOrder(input)).toMatchObject({ order: { id: 22 } });
   });
 
+  it('does not generate an unsafe ID after the largest valid API ID', () => {
+    const socket = load({
+      ...testData,
+      orders: [{ ...testData.orders[0], id: Number.MAX_SAFE_INTEGER }],
+    });
+    socket.quote();
+    expect(store.addOrder(input)).toEqual({ error: 'id-exhausted' });
+    expect(store.orders()).toHaveLength(1);
+  });
+
   it('rejects invalid input and missing contract mappings', () => {
     const socket = load();
     socket.quote();
@@ -169,7 +179,7 @@ describe('OrdersStore', () => {
       socket.quote();
       store.selectFormSymbol('BTCUSD');
       socket.fail();
-      expect(store.hasStaleQuotes()).toBe(true);
+      expect(store.quoteFreshness().get('BTCUSD')).toBe('stale');
       expect(store.groups()[0].profit).toBe(300);
       expect(store.addOrder(input)).toHaveProperty('error');
       vi.advanceTimersByTime(1000);
@@ -177,6 +187,53 @@ describe('OrdersStore', () => {
       expect(store.addOrder(input)).toHaveProperty('error');
       sockets[1].quote();
       expect(store.addOrder(input)).toHaveProperty('order');
+    } finally {
+      TestBed.resetTestingModule();
+      vi.useRealTimers();
+    }
+  });
+
+  it('marks each symbol current only after its own quote returns following reconnect', () => {
+    vi.useFakeTimers();
+    try {
+      const socket = load();
+      socket.quote('BTCUSD');
+      socket.quote('EURUSD', 1.1);
+      expect([...store.quoteFreshness().values()]).toEqual(['current', 'current']);
+      socket.fail();
+      expect([...store.quoteFreshness().values()]).toEqual(['stale', 'stale']);
+      vi.advanceTimersByTime(1000);
+      sockets[1].open();
+      sockets[1].quote('BTCUSD', 112);
+      expect(store.quoteFreshness().get('BTCUSD')).toBe('current');
+      expect(store.quoteFreshness().get('EURUSD')).toBe('stale');
+      sockets[1].quote('EURUSD', 1.2);
+      expect([...store.quoteFreshness().values()]).toEqual(['current', 'current']);
+    } finally {
+      TestBed.resetTestingModule();
+      vi.useRealTimers();
+    }
+  });
+
+  it('syncs changed symbols without rerunning the effect on connection status changes', () => {
+    vi.useFakeTimers();
+    try {
+      const quoteService = TestBed.inject(QuotesService);
+      const setSymbols = vi.spyOn(quoteService, 'setSymbols');
+      const socket = load();
+      expect(setSymbols).toHaveBeenCalledTimes(1);
+
+      socket.fail();
+      vi.advanceTimersByTime(1000);
+      sockets[1].open();
+      TestBed.tick();
+      expect(setSymbols).toHaveBeenCalledTimes(1);
+      expect(sockets[1].sent).toEqual([{ p: '/subscribe/addlist', d: ['BTCUSD', 'EURUSD'] }]);
+
+      store.closeGroup('BTCUSD');
+      TestBed.tick();
+      expect(setSymbols).toHaveBeenCalledTimes(2);
+      expect(sockets[1].sent.at(-1)).toEqual({ p: '/subscribe/removelist', d: ['BTCUSD'] });
     } finally {
       TestBed.resetTestingModule();
       vi.useRealTimers();

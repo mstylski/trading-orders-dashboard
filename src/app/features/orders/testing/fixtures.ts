@@ -1,5 +1,21 @@
 import { QuoteSocket } from '../data/quote-socket';
-import { Order, OrdersData, Quote } from '../models/order.models';
+import { applyQuotes, prepareOrderGroups } from '../domain/orders';
+import {
+  ContractSizeBySymbol,
+  Order,
+  OrderGroup,
+  OrdersData,
+  Quote,
+  Quotes,
+} from '../models/order.models';
+
+export function groupOrders(
+  orders: readonly Order[],
+  quotes: Quotes,
+  contractSizes: ContractSizeBySymbol,
+): readonly OrderGroup[] {
+  return applyQuotes(prepareOrderGroups(orders), quotes, contractSizes);
+}
 
 export const testOrders: readonly Order[] = [
   {

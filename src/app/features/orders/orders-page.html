@@ -82,7 +82,7 @@
               <span class="status-dot" aria-hidden="true"></span>
               @switch (store.connectionStatus()) {
                 @case ('connected') {
-                  Kwotowania na żywo
+                  Połączono z kwotowaniami
                 }
                 @case ('reconnecting') {
                   Ponowne łączenie{{
@@ -95,16 +95,10 @@
               }
             </div>
           </div>
-          @if (store.hasStaleQuotes()) {
-            <p class="status-notice" role="status">
-              Wyświetlane ceny i wyniki mogą być nieaktualne. Oczekiwanie na nowe kwotowania;
-              dodawanie wymaga świeżej ceny wybranego symbolu.
-            </p>
-          }
           @if (store.groups().length) {
             <app-orders-table
               [groups]="store.groups()"
-              [stale]="store.hasStaleQuotes()"
+              [quoteFreshness]="store.quoteFreshness()"
               [expanded]="expanded()"
               (toggleGroup)="toggleGroup($event)"
               (closeOrder)="closeOrder($event)"
