@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { ORDERS_API, OrdersApiService } from './orders-api.service';
+import { OrdersApiService } from './orders-api.service';
+import { ORDERS_DATA_CONFIG, ordersDataConfig } from './orders-data.config';
 import { testData } from '../testing/fixtures';
 import { OrdersData } from '../models/order.models';
 
@@ -10,7 +11,11 @@ describe('OrdersApiService', () => {
   let http: HttpTestingController;
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ORDERS_DATA_CONFIG, useValue: ordersDataConfig },
+      ],
     });
     api = TestBed.inject(OrdersApiService);
     http = TestBed.inject(HttpTestingController);
@@ -22,9 +27,9 @@ describe('OrdersApiService', () => {
     instruments: unknown = testData.instruments,
     contracts: unknown = testData.contracts,
   ): void {
-    http.expectOne(`${ORDERS_API}/order-data.json`).flush(orders as object);
-    http.expectOne(`${ORDERS_API}/instruments.json`).flush(instruments as object);
-    http.expectOne(`${ORDERS_API}/contract-types.json`).flush(contracts as object);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/orders`).flush(orders as object);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/instruments`).flush(instruments as object);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/contract-types`).flush(contracts as object);
   }
 
   it('starts all three requests and unwraps the order data', () => {

@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID, RESPONSE_INIT } from '@angular/core';
-import { ORDERS_API } from '../data/orders-api.service';
+import { ORDERS_DATA_CONFIG, ordersDataConfig } from '../data/orders-data.config';
 import { QuotesService } from '../data/quotes.service';
 import { NewOrder, OrdersData } from '../models/order.models';
 import { FakeSocket, testData } from '../testing/fixtures';
@@ -28,6 +28,7 @@ describe('OrdersStore', () => {
         provideHttpClientTesting(),
         OrdersStore,
         QuotesService,
+        { provide: ORDERS_DATA_CONFIG, useValue: ordersDataConfig },
         { provide: QUOTE_SOCKET_FACTORY, useValue: createSocket },
       ],
     });
@@ -40,9 +41,9 @@ describe('OrdersStore', () => {
 
   function load(data: OrdersData = testData): FakeSocket {
     store.load();
-    http.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: data.orders });
-    http.expectOne(`${ORDERS_API}/instruments.json`).flush(data.instruments);
-    http.expectOne(`${ORDERS_API}/contract-types.json`).flush(data.contracts);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/orders`).flush({ data: data.orders });
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/instruments`).flush(data.instruments);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/contract-types`).flush(data.contracts);
     TestBed.tick();
     sockets[0].open();
     return sockets[0];
@@ -258,6 +259,7 @@ describe('OrdersStore on the server', () => {
         provideHttpClientTesting(),
         OrdersStore,
         QuotesService,
+        { provide: ORDERS_DATA_CONFIG, useValue: ordersDataConfig },
         { provide: PLATFORM_ID, useValue: 'server' },
         { provide: RESPONSE_INIT, useValue: responseInit },
       ],
@@ -270,9 +272,9 @@ describe('OrdersStore on the server', () => {
     expect(responseInit.status).toBe(503);
     expect(serverStore.status()).toBe('error');
     serverStore.load();
-    serverHttp.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: testData.orders });
-    serverHttp.expectOne(`${ORDERS_API}/instruments.json`).flush(testData.instruments);
-    serverHttp.expectOne(`${ORDERS_API}/contract-types.json`).flush(testData.contracts);
+    serverHttp.expectOne(`${ordersDataConfig.apiBaseUrl}/orders`).flush({ data: testData.orders });
+    serverHttp.expectOne(`${ordersDataConfig.apiBaseUrl}/instruments`).flush(testData.instruments);
+    serverHttp.expectOne(`${ordersDataConfig.apiBaseUrl}/contract-types`).flush(testData.contracts);
     expect(serverStore.status()).toBe('ready');
     serverHttp.verify();
   });
@@ -287,6 +289,7 @@ describe('OrdersStore on the server', () => {
           provideHttpClientTesting(),
           OrdersStore,
           QuotesService,
+          { provide: ORDERS_DATA_CONFIG, useValue: ordersDataConfig },
           { provide: PLATFORM_ID, useValue: 'server' },
           { provide: QUOTE_SOCKET_FACTORY, useValue: createSocket },
         ],
@@ -294,9 +297,15 @@ describe('OrdersStore on the server', () => {
       const serverStore = TestBed.inject(OrdersStore);
       const serverHttp = TestBed.inject(HttpTestingController);
       serverStore.load();
-      serverHttp.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: testData.orders });
-      serverHttp.expectOne(`${ORDERS_API}/instruments.json`).flush(testData.instruments);
-      serverHttp.expectOne(`${ORDERS_API}/contract-types.json`).flush(testData.contracts);
+      serverHttp
+        .expectOne(`${ordersDataConfig.apiBaseUrl}/orders`)
+        .flush({ data: testData.orders });
+      serverHttp
+        .expectOne(`${ordersDataConfig.apiBaseUrl}/instruments`)
+        .flush(testData.instruments);
+      serverHttp
+        .expectOne(`${ordersDataConfig.apiBaseUrl}/contract-types`)
+        .flush(testData.contracts);
       TestBed.tick();
       expect(serverStore.status()).toBe('ready');
       expect(serverStore.groups()).toHaveLength(2);

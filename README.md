@@ -18,7 +18,25 @@ npm run build
 npm run serve:ssr:trading-orders-dashboard
 ```
 
-The production server listens at `http://localhost:4000/` by default. Set the `PORT` environment variable to use another port. The server needs access to the external GeekSoft REST endpoints to render order data; the browser needs access to the GeekSoft WebSocket endpoint for live quotes. The repository does not include a backend.
+Start the local NestJS API in another terminal before starting the dashboard:
+
+```bash
+npm run start:api
+```
+
+The API listens at `http://localhost:3000/` by default (`API_PORT` changes the port). The production SSR server listens at `http://localhost:4000/` by default (`PORT` changes the port). The browser needs access to the GeekSoft WebSocket endpoint for live quotes.
+
+The API serves copies of the original JSON data in `api/data`. `GET /orders` returns all matching orders as `{ data }`, with an optional `status=open|closed` query parameter. The source data contains open orders only, so `status=closed` returns an empty list. `GET /instruments` and `GET /contract-types` return the original arrays. Invalid status values return HTTP 400.
+
+`npm run build:api` compiles the backend and copies its JSON files into `dist/api/data`. The API reads data relative to its module files, so the compiled artifact can run from another working directory without the source `api/data` folder. Node dependencies must still be installed. For example, from the project root:
+
+```bash
+npm run build:api
+cd dist
+node api/main.js
+```
+
+The API base URL is configured in `src/app/features/orders/data/orders-data.config.ts` for both SSR and the browser. Rebuild the dashboard after changing it. Angular HTTP transfer cache carries the SSR responses into hydration.
 
 The SSR host allowlist in `angular.json` currently includes `localhost` and `127.0.0.1`. Add the deployment hostname before serving the application on another host.
 
@@ -27,11 +45,14 @@ The SSR host allowlist in `angular.json` currently includes `localhost` and `127
 ```bash
 npm run build
 npm test -- --watch=false
+npm run test:api
 npm run lint
 npm run format:check
 ```
 
-Unit and integration tests use mocked HTTP and WebSocket responses. No E2E test tool is configured for this project.
+Angular tests use mocked HTTP and WebSocket responses. `test:api` builds the backend and uses the Node test runner to start the real NestJS module on a free local port, with `dist/api` as its working directory. It checks all three HTTP endpoints against the source fixtures, status filtering, invalid queries, and recovery after validation errors. The server closes after the tests. No additional test dependencies are required.
+
+`lint` and both formatting commands cover the frontend and API, including API tests and build scripts. `lint:api` checks just the backend. Angular-specific lint rules apply only to `src`.
 
 ## Structure and data flow
 

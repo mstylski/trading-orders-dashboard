@@ -2,7 +2,7 @@ import { ComponentFixture, DeferBlockState, TestBed } from '@angular/core/testin
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { OrdersPage } from './orders-page';
 import { appConfig } from '../../app.config';
-import { ORDERS_API } from './data/orders-api.service';
+import { ordersDataConfig } from './data/orders-data.config';
 import { FakeSocket, testData } from './testing/fixtures';
 import { QUOTE_SOCKET_FACTORY } from './data/quote-socket';
 
@@ -31,9 +31,9 @@ describe('Dashboard integration', () => {
   });
 
   async function load(): Promise<void> {
-    http.expectOne(`${ORDERS_API}/order-data.json`).flush({ data: testData.orders });
-    http.expectOne(`${ORDERS_API}/instruments.json`).flush(testData.instruments);
-    http.expectOne(`${ORDERS_API}/contract-types.json`).flush(testData.contracts);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/orders`).flush({ data: testData.orders });
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/instruments`).flush(testData.instruments);
+    http.expectOne(`${ordersDataConfig.apiBaseUrl}/contract-types`).flush(testData.contracts);
     await fixture.whenStable();
     socket.open();
     socket.quote();

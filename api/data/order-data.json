@@ -1,0 +1,1921 @@
+{
+  "data": [
+    {
+      "openTime": 1750740422000,
+      "openPrice": 104837.47,
+      "swap": -0.00147939,
+      "id": 1203384,
+      "symbol": "BTCUSD",
+      "side": "BUY",
+      "size": 0.05
+    },
+    {
+      "openTime": 1769870131000,
+      "openPrice": 81536.02,
+      "swap": -6.55e-5,
+      "id": 1226230,
+      "symbol": "BTCUSD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1708338630000,
+      "openPrice": 52250.79,
+      "swap": -608.0,
+      "id": 1226240,
+      "symbol": "BTCUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1770284465000,
+      "openPrice": 2132.19,
+      "swap": 0,
+      "id": 1226254,
+      "symbol": "ETHUSD",
+      "side": "BUY",
+      "size": 0.03
+    },
+    {
+      "openTime": 1708441272000,
+      "openPrice": 2940.06,
+      "swap": -8731.06,
+      "id": 1226256,
+      "symbol": "ETHUSD",
+      "side": "BUY",
+      "size": 0.03
+    },
+    {
+      "openTime": 1763100041000,
+      "openPrice": 0.51786,
+      "swap": 3.567e-5,
+      "id": 1226260,
+      "symbol": "AUDCHF",
+      "side": "BUY",
+      "size": 3.0
+    },
+    {
+      "openTime": 1726492487000,
+      "openPrice": 12.9,
+      "swap": -2.58e-6,
+      "id": 1241352,
+      "symbol": "ABEV.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492309000,
+      "openPrice": 3.418,
+      "swap": -1.011e-5,
+      "id": 1241226,
+      "symbol": "FILUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492290000,
+      "openPrice": 28.11,
+      "swap": -3.403e-5,
+      "id": 1241207,
+      "symbol": "DHER.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492543000,
+      "openPrice": 28.1,
+      "swap": -3.403e-5,
+      "id": 1241364,
+      "symbol": "DHER.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492606000,
+      "openPrice": 27.9,
+      "swap": -3.256e-5,
+      "id": 1241399,
+      "symbol": "DHER.DE",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492687000,
+      "openPrice": 27.9,
+      "swap": -3.256e-5,
+      "id": 1241436,
+      "symbol": "DHER.DE",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726477049000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241165,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477049000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241166,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477049000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241167,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477050000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241168,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477050000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241169,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477052000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241170,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477052000,
+      "openPrice": 4.27594,
+      "swap": -0.00067176,
+      "id": 1241171,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477053000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241172,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477055000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241173,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477055000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241174,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477056000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241175,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477056000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241176,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477057000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241177,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477058000,
+      "openPrice": 4.2742,
+      "swap": 0.00021885,
+      "id": 1241178,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477059000,
+      "openPrice": 4.27586,
+      "swap": -0.00067176,
+      "id": 1241179,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477060000,
+      "openPrice": 4.27586,
+      "swap": -0.00067176,
+      "id": 1241180,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492290000,
+      "openPrice": 4.2722,
+      "swap": -0.00067176,
+      "id": 1241209,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492340000,
+      "openPrice": 4.2723,
+      "swap": -0.00067176,
+      "id": 1241259,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492607000,
+      "openPrice": 4.2703,
+      "swap": 0.00021885,
+      "id": 1241401,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492684000,
+      "openPrice": 4.26979,
+      "swap": 0.00021885,
+      "id": 1241433,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492737000,
+      "openPrice": 4.26979,
+      "swap": 0.00021885,
+      "id": 1241471,
+      "symbol": "EURPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492738000,
+      "openPrice": 4.2715,
+      "swap": -0.00067176,
+      "id": 1241472,
+      "symbol": "EURPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492367000,
+      "openPrice": 10.18393,
+      "swap": 5.75e-5,
+      "id": 1241287,
+      "symbol": "USDSEK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1720422090000,
+      "openPrice": 227.51,
+      "swap": -0.00039889,
+      "id": 1236170,
+      "symbol": "AAPL.US",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492401000,
+      "openPrice": 5624.6,
+      "swap": -6.46e-5,
+      "id": 1241306,
+      "symbol": "US500",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492567000,
+      "openPrice": 5624.7,
+      "swap": -5.156e-5,
+      "id": 1241384,
+      "symbol": "US500",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492577000,
+      "openPrice": 5625.2,
+      "swap": -5.156e-5,
+      "id": 1241391,
+      "symbol": "US500",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492581000,
+      "openPrice": 5625.6,
+      "swap": -6.46e-5,
+      "id": 1241394,
+      "symbol": "US500",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492543000,
+      "openPrice": 67.64,
+      "swap": -6.816e-5,
+      "id": 1241366,
+      "symbol": "P911.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492311000,
+      "openPrice": 63.04,
+      "swap": -0.00033584,
+      "id": 1241229,
+      "symbol": "LTCUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1745305339000,
+      "openPrice": 0.6269,
+      "swap": -0.00012043,
+      "id": 21756475,
+      "symbol": "ADAUSD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1763615837000,
+      "openPrice": 128.51,
+      "swap": -0.00025637,
+      "id": 21801879,
+      "symbol": "BUND",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1763615861000,
+      "openPrice": 128.51,
+      "swap": -0.00025637,
+      "id": 21801881,
+      "symbol": "BUND",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492456000,
+      "openPrice": 63.06,
+      "swap": -9.817e-5,
+      "id": 1241343,
+      "symbol": "BNP.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492366000,
+      "openPrice": 3.84006,
+      "swap": -0.00032616,
+      "id": 1241285,
+      "symbol": "USDPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492610000,
+      "openPrice": 3.83745,
+      "swap": -6.732e-5,
+      "id": 1241404,
+      "symbol": "USDPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492692000,
+      "openPrice": 3.83615,
+      "swap": -6.732e-5,
+      "id": 1241441,
+      "symbol": "USDPLN",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492693000,
+      "openPrice": 3.83794,
+      "swap": -0.00032616,
+      "id": 1241442,
+      "symbol": "USDPLN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492330000,
+      "openPrice": 1.51171,
+      "swap": -0.00034457,
+      "id": 1241248,
+      "symbol": "EURCAD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492712000,
+      "openPrice": 1.51211,
+      "swap": -0.00034457,
+      "id": 1241447,
+      "symbol": "EURCAD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492726000,
+      "openPrice": 1.51186,
+      "swap": -0.00010312,
+      "id": 1241461,
+      "symbol": "EURCAD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492543000,
+      "openPrice": 3.607,
+      "swap": -9.635e-5,
+      "id": 1241363,
+      "symbol": "DBK.DE",
+      "side": "BUY",
+      "size": 4.0
+    },
+    {
+      "openTime": 1749118380000,
+      "openPrice": 24.185,
+      "swap": -1.899e-5,
+      "id": 21769278,
+      "symbol": "DBK.DE",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492361000,
+      "openPrice": 353.921,
+      "swap": -0.00103856,
+      "id": 1241280,
+      "symbol": "USDHUF",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492310000,
+      "openPrice": 18.312,
+      "swap": -4.85e-5,
+      "id": 1241227,
+      "symbol": "INJUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492331000,
+      "openPrice": 25.16,
+      "swap": -0.00073215,
+      "id": 1241250,
+      "symbol": "EURCZK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492717000,
+      "openPrice": 25.1567,
+      "swap": -0.00073215,
+      "id": 1241452,
+      "symbol": "EURCZK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492724000,
+      "openPrice": 25.1187,
+      "swap": -0.00033452,
+      "id": 1241459,
+      "symbol": "EURCZK",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492364000,
+      "openPrice": 19.32235,
+      "swap": -0.00167095,
+      "id": 1241283,
+      "symbol": "USDMXN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492369000,
+      "openPrice": 34.0013,
+      "swap": -0.00647217,
+      "id": 1241289,
+      "symbol": "USDTRY",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492391000,
+      "openPrice": 7457.4,
+      "swap": -9.108e-5,
+      "id": 1241297,
+      "symbol": "FR40",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492556000,
+      "openPrice": 7456.6,
+      "swap": -7.358e-5,
+      "id": 1241378,
+      "symbol": "FR40",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492395000,
+      "openPrice": 19426.3,
+      "swap": -0.00022937,
+      "id": 1241302,
+      "symbol": "US100",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492571000,
+      "openPrice": 19430.0,
+      "swap": -0.00018341,
+      "id": 1241387,
+      "symbol": "US100",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492402000,
+      "openPrice": 41532.0,
+      "swap": -0.00046772,
+      "id": 1241307,
+      "symbol": "US30",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492568000,
+      "openPrice": 41529.0,
+      "swap": -0.00037396,
+      "id": 1241385,
+      "symbol": "US30",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492579000,
+      "openPrice": 41529.0,
+      "swap": -0.00037396,
+      "id": 1241392,
+      "symbol": "US30",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492580000,
+      "openPrice": 41533.0,
+      "swap": -0.00046772,
+      "id": 1241393,
+      "symbol": "US30",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492317000,
+      "openPrice": 4816.49,
+      "swap": -0.00197787,
+      "id": 1241236,
+      "symbol": "YFIUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492390000,
+      "openPrice": 18645.3,
+      "swap": -0.0002636,
+      "id": 1241294,
+      "symbol": "DE40",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492555000,
+      "openPrice": 18641.7,
+      "swap": -0.00021337,
+      "id": 1241375,
+      "symbol": "DE40",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492363000,
+      "openPrice": 140.364,
+      "swap": 0.00054472,
+      "id": 1241282,
+      "symbol": "USDJPY",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492767000,
+      "openPrice": 140.359,
+      "swap": 0.00054472,
+      "id": 1241485,
+      "symbol": "USDJPY",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1745318018000,
+      "openPrice": 7875.0,
+      "swap": -2.488e-5,
+      "id": 21756476,
+      "symbol": "AU200",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492427000,
+      "openPrice": 57.61,
+      "swap": -1.523e-5,
+      "id": 1241324,
+      "symbol": "ASELS.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492619000,
+      "openPrice": 57.39,
+      "swap": -1.282e-5,
+      "id": 1241405,
+      "symbol": "ASELS.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492644000,
+      "openPrice": 57.66,
+      "swap": -1.523e-5,
+      "id": 1241426,
+      "symbol": "ASELS.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492370000,
+      "openPrice": 17.65796,
+      "swap": -0.00123752,
+      "id": 1241290,
+      "symbol": "USDZAR",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492339000,
+      "openPrice": 11.78879,
+      "swap": -0.00045934,
+      "id": 1241257,
+      "symbol": "EURNOK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492735000,
+      "openPrice": 11.78585,
+      "swap": 9.29e-6,
+      "id": 1241469,
+      "symbol": "EURNOK",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492435000,
+      "openPrice": 91.57,
+      "swap": -1.149e-5,
+      "id": 1241332,
+      "symbol": "TCELL.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492629000,
+      "openPrice": 90.98,
+      "swap": -9.79e-6,
+      "id": 1241413,
+      "symbol": "TCELL.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492635000,
+      "openPrice": 91.17,
+      "swap": -1.149e-5,
+      "id": 1241418,
+      "symbol": "TCELL.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1723810519000,
+      "openPrice": 162.25,
+      "swap": -1.67e-5,
+      "id": 1238372,
+      "symbol": "TUPRAS.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492437000,
+      "openPrice": 163.25,
+      "swap": -1.743e-5,
+      "id": 1241334,
+      "symbol": "TUPRAS.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492633000,
+      "openPrice": 162.85,
+      "swap": -1.516e-5,
+      "id": 1241415,
+      "symbol": "TUPRAS.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492634000,
+      "openPrice": 163.25,
+      "swap": -1.743e-5,
+      "id": 1241416,
+      "symbol": "TUPRAS.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492442000,
+      "openPrice": 567.1,
+      "swap": -6.997e-5,
+      "id": 1241335,
+      "symbol": "ABB.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1763540711000,
+      "openPrice": 640.8,
+      "swap": -1.887e-5,
+      "id": 21801659,
+      "symbol": "ABB.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492329000,
+      "openPrice": 1.65026,
+      "swap": -0.00040332,
+      "id": 1241247,
+      "symbol": "EURAUD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492713000,
+      "openPrice": 1.65039,
+      "swap": -0.00040332,
+      "id": 1241448,
+      "symbol": "EURAUD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492728000,
+      "openPrice": 1.6501,
+      "swap": -4.556e-5,
+      "id": 1241462,
+      "symbol": "EURAUD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492390000,
+      "openPrice": 11549.0,
+      "swap": -0.00016542,
+      "id": 1241295,
+      "symbol": "ES35",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492555000,
+      "openPrice": 11542.0,
+      "swap": -0.00013414,
+      "id": 1241376,
+      "symbol": "ES35",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492400000,
+      "openPrice": 100.367,
+      "swap": -1.151e-5,
+      "id": 1241305,
+      "symbol": "USDINDEX",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492566000,
+      "openPrice": 100.338,
+      "swap": -8.77e-6,
+      "id": 1241383,
+      "symbol": "USDINDEX",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492576000,
+      "openPrice": 100.333,
+      "swap": -8.77e-6,
+      "id": 1241390,
+      "symbol": "USDINDEX",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492432000,
+      "openPrice": 90.98,
+      "swap": -7.61e-6,
+      "id": 1241329,
+      "symbol": "MAVI.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492625000,
+      "openPrice": 90.77,
+      "swap": -6.6e-6,
+      "id": 1241410,
+      "symbol": "MAVI.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492638000,
+      "openPrice": 91.08,
+      "swap": -7.61e-6,
+      "id": 1241421,
+      "symbol": "MAVI.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492397000,
+      "openPrice": 2191.2,
+      "swap": -2.299e-5,
+      "id": 1241303,
+      "symbol": "US2000",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492403000,
+      "openPrice": 2191.2,
+      "swap": -2.299e-5,
+      "id": 1241308,
+      "symbol": "US2000",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492570000,
+      "openPrice": 2190.5,
+      "swap": -1.905e-5,
+      "id": 1241386,
+      "symbol": "US2000",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492491000,
+      "openPrice": 37.13,
+      "swap": -1.344e-5,
+      "id": 1241355,
+      "symbol": "ITAU.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492443000,
+      "openPrice": 75.52,
+      "swap": -9.66e-6,
+      "id": 1241336,
+      "symbol": "ERIC.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492445000,
+      "openPrice": 117.78,
+      "swap": -1.615e-5,
+      "id": 1241338,
+      "symbol": "NDASEK.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492492000,
+      "openPrice": 37.46,
+      "swap": -8.66e-6,
+      "id": 1241357,
+      "symbol": "PETROBRA.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492348000,
+      "openPrice": 1.79386,
+      "swap": -5.231e-5,
+      "id": 1241267,
+      "symbol": "GBPCAD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492747000,
+      "openPrice": 1.79419,
+      "swap": -0.00046211,
+      "id": 1241477,
+      "symbol": "GBPCAD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492543000,
+      "openPrice": 8.22,
+      "swap": -1.19e-5,
+      "id": 1241365,
+      "symbol": "HFG.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492298000,
+      "openPrice": 23.72,
+      "swap": -8.023e-5,
+      "id": 1241216,
+      "symbol": "AVAUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492434000,
+      "openPrice": 41.01,
+      "swap": -5.3e-6,
+      "id": 1241331,
+      "symbol": "SISE.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492628000,
+      "openPrice": 40.83,
+      "swap": -4.8e-6,
+      "id": 1241412,
+      "symbol": "SISE.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492636000,
+      "openPrice": 41.03,
+      "swap": -5.3e-6,
+      "id": 1241419,
+      "symbol": "SISE.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492392000,
+      "openPrice": 17443.0,
+      "swap": -3.608e-5,
+      "id": 1241299,
+      "symbol": "HK50",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492558000,
+      "openPrice": 17440.0,
+      "swap": -2.923e-5,
+      "id": 1241380,
+      "symbol": "HK50",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492315000,
+      "openPrice": 132.1,
+      "swap": -0.00060439,
+      "id": 1241232,
+      "symbol": "SOLUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492330000,
+      "openPrice": 0.9397,
+      "swap": 0.00018689,
+      "id": 1241249,
+      "symbol": "EURCHF",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492725000,
+      "openPrice": 0.93969,
+      "swap": -0.00063024,
+      "id": 1241460,
+      "symbol": "EURCHF",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492387000,
+      "openPrice": 12002.0,
+      "swap": -0.00012886,
+      "id": 1241293,
+      "symbol": "CH20",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492555000,
+      "openPrice": 12001.0,
+      "swap": -0.0001044,
+      "id": 1241374,
+      "symbol": "CH20",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1723810523000,
+      "openPrice": 433.6,
+      "swap": -0.00090294,
+      "id": 1238373,
+      "symbol": "EZJ.UK",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1723810526000,
+      "openPrice": 433.5,
+      "swap": -0.00090294,
+      "id": 1238374,
+      "symbol": "EZJ.UK",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492414000,
+      "openPrice": 489.7,
+      "swap": -0.00087893,
+      "id": 1241315,
+      "symbol": "EZJ.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492437000,
+      "openPrice": 287.2,
+      "swap": -3.311e-5,
+      "id": 1241333,
+      "symbol": "THYAO.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492631000,
+      "openPrice": 286.8,
+      "swap": -2.807e-5,
+      "id": 1241414,
+      "symbol": "THYAO.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492635000,
+      "openPrice": 287.45,
+      "swap": -3.311e-5,
+      "id": 1241417,
+      "symbol": "THYAO.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492360000,
+      "openPrice": 7.79437,
+      "swap": -9.26e-5,
+      "id": 1241279,
+      "symbol": "USDHKD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492758000,
+      "openPrice": 7.79226,
+      "swap": -0.00029766,
+      "id": 1241478,
+      "symbol": "USDHKD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492758000,
+      "openPrice": 7.79436,
+      "swap": -9.26e-5,
+      "id": 1241479,
+      "symbol": "USDHKD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492362000,
+      "openPrice": 3.745,
+      "swap": -0.00039143,
+      "id": 1241281,
+      "symbol": "USDILS",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492768000,
+      "openPrice": 3.7471,
+      "swap": -0.00039143,
+      "id": 1241486,
+      "symbol": "USDILS",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492768000,
+      "openPrice": 3.7453,
+      "swap": -0.0005397,
+      "id": 1241487,
+      "symbol": "USDILS",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492360000,
+      "openPrice": 6.70756,
+      "swap": 7.961e-5,
+      "id": 1241278,
+      "symbol": "USDDKK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492760000,
+      "openPrice": 6.70518,
+      "swap": 7.961e-5,
+      "id": 1241480,
+      "symbol": "USDDKK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1767992110000,
+      "openPrice": 88.8,
+      "swap": -2.677e-5,
+      "id": 21801691,
+      "symbol": "APTV.US",
+      "side": "BUY",
+      "size": 2.0
+    },
+    {
+      "openTime": 1726492346000,
+      "openPrice": 19.64481,
+      "swap": -0.00171087,
+      "id": 1241265,
+      "symbol": "EURZAR",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492340000,
+      "openPrice": 1.79772,
+      "swap": -0.00051136,
+      "id": 1241258,
+      "symbol": "EURNZD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492734000,
+      "openPrice": 1.7977,
+      "swap": -0.00051136,
+      "id": 1241468,
+      "symbol": "EURNZD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492736000,
+      "openPrice": 1.79725,
+      "swap": 6.158e-5,
+      "id": 1241470,
+      "symbol": "EURNZD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492368000,
+      "openPrice": 1.29554,
+      "swap": 0.00011683,
+      "id": 1241288,
+      "symbol": "USDSGD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492462000,
+      "openPrice": 38.53,
+      "swap": -5.328e-5,
+      "id": 1241349,
+      "symbol": "RNO.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492544000,
+      "openPrice": 32.89,
+      "swap": -4.917e-5,
+      "id": 1241370,
+      "symbol": "RWE.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492365000,
+      "openPrice": 10.59581,
+      "swap": -0.00014037,
+      "id": 1241284,
+      "symbol": "USDNOK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492349000,
+      "openPrice": 1.11517,
+      "swap": 0.00056261,
+      "id": 1241268,
+      "symbol": "GBPCHF",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492415000,
+      "openPrice": 378.9,
+      "swap": -0.00062754,
+      "id": 1241316,
+      "symbol": "GLEN.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492345000,
+      "openPrice": 37.87105,
+      "swap": -0.00757409,
+      "id": 1241263,
+      "symbol": "EURTRY",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492742000,
+      "openPrice": 37.86176,
+      "swap": 0.00239839,
+      "id": 1241475,
+      "symbol": "EURTRY",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492335000,
+      "openPrice": 393.756,
+      "swap": -0.00148354,
+      "id": 1241254,
+      "symbol": "EURHUF",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492721000,
+      "openPrice": 393.523,
+      "swap": -0.0002863,
+      "id": 1241455,
+      "symbol": "EURHUF",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492731000,
+      "openPrice": 393.51,
+      "swap": -0.0002863,
+      "id": 1241465,
+      "symbol": "EURHUF",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492343000,
+      "openPrice": 11.3303,
+      "swap": -0.00023383,
+      "id": 1241261,
+      "symbol": "EURSEK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492332000,
+      "openPrice": 7.46264,
+      "swap": -0.00020874,
+      "id": 1241251,
+      "symbol": "EURDKK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492718000,
+      "openPrice": 7.46264,
+      "swap": -0.00020874,
+      "id": 1241453,
+      "symbol": "EURDKK",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492723000,
+      "openPrice": 7.46147,
+      "swap": -0.00023839,
+      "id": 1241458,
+      "symbol": "EURDKK",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492543000,
+      "openPrice": 43.43,
+      "swap": -6.054e-5,
+      "id": 1241362,
+      "symbol": "BAS.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492334000,
+      "openPrice": 8.67303,
+      "swap": -0.00040568,
+      "id": 1241253,
+      "symbol": "EURHKD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492721000,
+      "openPrice": 8.67288,
+      "swap": -4.269e-5,
+      "id": 1241456,
+      "symbol": "EURHKD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492732000,
+      "openPrice": 8.67212,
+      "swap": -4.269e-5,
+      "id": 1241466,
+      "symbol": "EURHKD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726477155000,
+      "openPrice": 286.12,
+      "swap": -0.00045645,
+      "id": 1241191,
+      "symbol": "ALV.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492508000,
+      "openPrice": 286.42,
+      "swap": -0.00045645,
+      "id": 1241361,
+      "symbol": "ALV.DE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492337000,
+      "openPrice": 156.154,
+      "swap": 0.00032229,
+      "id": 1241255,
+      "symbol": "EURJPY",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492492000,
+      "openPrice": 11.63,
+      "swap": -1.05e-6,
+      "id": 1241356,
+      "symbol": "MAGALU.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492460000,
+      "openPrice": 608.35,
+      "swap": -0.00077852,
+      "id": 1241347,
+      "symbol": "MC.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1762758062000,
+      "openPrice": 0.4905,
+      "swap": -3.05e-6,
+      "id": 21799799,
+      "symbol": "CRVUSD",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492458000,
+      "openPrice": 22.23,
+      "swap": -6.194e-5,
+      "id": 1241345,
+      "symbol": "GLE.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492461000,
+      "openPrice": 368.68,
+      "swap": -0.00049309,
+      "id": 1241348,
+      "symbol": "OR.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492494000,
+      "openPrice": 58.53,
+      "swap": -1.483e-5,
+      "id": 1241359,
+      "symbol": "VALE.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492416000,
+      "openPrice": 58.01,
+      "swap": -0.00013149,
+      "id": 1241317,
+      "symbol": "LLOY.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492418000,
+      "openPrice": 337.4,
+      "swap": -0.00049082,
+      "id": 1241319,
+      "symbol": "OCDO.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492457000,
+      "openPrice": 9.17,
+      "swap": -1.352e-5,
+      "id": 1241344,
+      "symbol": "FR.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492433000,
+      "openPrice": 91.83,
+      "swap": -1.035e-5,
+      "id": 1241330,
+      "symbol": "SAHOL.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492627000,
+      "openPrice": 91.57,
+      "swap": -8.48e-6,
+      "id": 1241411,
+      "symbol": "SAHOL.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492637000,
+      "openPrice": 91.83,
+      "swap": -1.035e-5,
+      "id": 1241420,
+      "symbol": "SAHOL.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492493000,
+      "openPrice": 54.19,
+      "swap": -1.398e-5,
+      "id": 1241358,
+      "symbol": "SUZANO.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492422000,
+      "openPrice": 77.77,
+      "swap": -0.00013677,
+      "id": 1241323,
+      "symbol": "VOD.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492454000,
+      "openPrice": 130.87,
+      "swap": -0.00023011,
+      "id": 1241341,
+      "symbol": "AIR.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492446000,
+      "openPrice": 33.02,
+      "swap": -5.32e-6,
+      "id": 1241339,
+      "symbol": "TELIA.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492447000,
+      "openPrice": 255.08,
+      "swap": -3.206e-5,
+      "id": 1241340,
+      "symbol": "VOLV.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492455000,
+      "openPrice": 65.41,
+      "swap": -9.481e-5,
+      "id": 1241342,
+      "symbol": "BN.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492762000,
+      "openPrice": 0.84432,
+      "swap": 0.00042702,
+      "id": 1241482,
+      "symbol": "USDCHF",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492764000,
+      "openPrice": 0.84433,
+      "swap": 0.00042702,
+      "id": 1241484,
+      "symbol": "USDCHF",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492428000,
+      "openPrice": 572.15,
+      "swap": -6.019e-5,
+      "id": 1241325,
+      "symbol": "BIMAS.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492622000,
+      "openPrice": 570.85,
+      "swap": -5.111e-5,
+      "id": 1241406,
+      "symbol": "BIMAS.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492643000,
+      "openPrice": 571.65,
+      "swap": -6.019e-5,
+      "id": 1241425,
+      "symbol": "BIMAS.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492357000,
+      "openPrice": 0.61899,
+      "swap": -0.00012249,
+      "id": 1241276,
+      "symbol": "NZDUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492394000,
+      "openPrice": 8280.4,
+      "swap": -0.00013884,
+      "id": 1241301,
+      "symbol": "UK100",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492562000,
+      "openPrice": 8279.6,
+      "swap": -0.00011247,
+      "id": 1241382,
+      "symbol": "UK100",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492571000,
+      "openPrice": 8279.1,
+      "swap": -0.00011247,
+      "id": 1241388,
+      "symbol": "UK100",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492338000,
+      "openPrice": 21.4967,
+      "swap": -0.00220386,
+      "id": 1241256,
+      "symbol": "EURMXN",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492420000,
+      "openPrice": 2551.4,
+      "swap": -0.00490559,
+      "id": 1241321,
+      "symbol": "SHEL.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492444000,
+      "openPrice": 0.0605,
+      "swap": -2.6e-7,
+      "id": 1241337,
+      "symbol": "FING.SE",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492399000,
+      "openPrice": 18.65,
+      "swap": -7.4e-7,
+      "id": 1241304,
+      "symbol": "VIX",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492583000,
+      "openPrice": 18.65,
+      "swap": -7.4e-7,
+      "id": 1241395,
+      "symbol": "VIX",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492584000,
+      "openPrice": 18.4,
+      "swap": -1.2e-7,
+      "id": 1241396,
+      "symbol": "VIX",
+      "side": "SELL",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492490000,
+      "openPrice": 13.15,
+      "swap": -6.5e-7,
+      "id": 1241354,
+      "symbol": "COSAN.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492420000,
+      "openPrice": 368.9,
+      "swap": -0.00069649,
+      "id": 1241322,
+      "symbol": "TSCO.UK",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492460000,
+      "openPrice": 148.32,
+      "swap": -0.00028492,
+      "id": 1241346,
+      "symbol": "HO.FR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492489000,
+      "openPrice": 12.23,
+      "swap": -2.39e-6,
+      "id": 1241353,
+      "symbol": "B3.BR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1737731977000,
+      "openPrice": 10.29,
+      "swap": -1.61e-6,
+      "id": 21740653,
+      "symbol": "B3.BR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1737732150000,
+      "openPrice": 10.27,
+      "swap": -1.61e-6,
+      "id": 21740654,
+      "symbol": "B3.BR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1737732247000,
+      "openPrice": 10.27,
+      "swap": -1.61e-6,
+      "id": 21740655,
+      "symbol": "B3.BR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492431000,
+      "openPrice": 24.02,
+      "swap": -4.12e-6,
+      "id": 1241328,
+      "symbol": "KRDMD.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492624000,
+      "openPrice": 23.88,
+      "swap": -2.45e-6,
+      "id": 1241409,
+      "symbol": "KRDMD.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492639000,
+      "openPrice": 24.02,
+      "swap": -4.12e-6,
+      "id": 1241422,
+      "symbol": "KRDMD.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492355000,
+      "openPrice": 0.84106,
+      "swap": -3.053e-5,
+      "id": 1241273,
+      "symbol": "NZDCAD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492429000,
+      "openPrice": 127.95,
+      "swap": -5.28e-6,
+      "id": 1241326,
+      "symbol": "FENER.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492623000,
+      "openPrice": 127.15,
+      "swap": -4.95e-6,
+      "id": 1241407,
+      "symbol": "FENER.TR",
+      "side": "SELL",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492642000,
+      "openPrice": 127.75,
+      "swap": -5.28e-6,
+      "id": 1241424,
+      "symbol": "FENER.TR",
+      "side": "BUY",
+      "size": 1.0
+    },
+    {
+      "openTime": 1726492297000,
+      "openPrice": 0.5098,
+      "swap": -1.56e-5,
+      "id": 1241215,
+      "symbol": "ARBUSD",
+      "side": "BUY",
+      "size": 0.01
+    },
+    {
+      "openTime": 1726492308000,
+      "openPrice": 1.2954,
+      "swap": -1.78e-6,
+      "id": 1241225,
+      "symbol": "FETUSD",
+      "side": "BUY",
+      "size": 0.01
+    }
+  ]
+}

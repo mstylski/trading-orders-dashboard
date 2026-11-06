@@ -1,0 +1,434 @@
+[
+  {
+    "symbol": "AAPL.US",
+    "contractType": 0
+  },
+  {
+    "symbol": "ABB.SE",
+    "contractType": 0
+  },
+  {
+    "symbol": "ABEV.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "ADAUSD",
+    "contractType": 4
+  },
+  {
+    "symbol": "AIR.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "ALV.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "APTV.US",
+    "contractType": 0
+  },
+  {
+    "symbol": "ARBUSD",
+    "contractType": 3
+  },
+  {
+    "symbol": "ASELS.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "AU200",
+    "contractType": 0
+  },
+  {
+    "symbol": "AUDCHF",
+    "contractType": 5
+  },
+  {
+    "symbol": "AVAUSD",
+    "contractType": 2
+  },
+  {
+    "symbol": "B3.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "BAS.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "BIMAS.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "BN.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "BNP.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "BTCUSD",
+    "contractType": 0
+  },
+  {
+    "symbol": "BUND",
+    "contractType": 3
+  },
+  {
+    "symbol": "CH20",
+    "contractType": 0
+  },
+  {
+    "symbol": "COSAN.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "CRVUSD",
+    "contractType": 3
+  },
+  {
+    "symbol": "DBK.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "DE40",
+    "contractType": 0
+  },
+  {
+    "symbol": "DHER.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "ERIC.SE",
+    "contractType": 0
+  },
+  {
+    "symbol": "ES35",
+    "contractType": 0
+  },
+  {
+    "symbol": "ETHUSD",
+    "contractType": 0
+  },
+  {
+    "symbol": "EURAUD",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURCAD",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURCHF",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURCZK",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURDKK",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURHKD",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURHUF",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURJPY",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURMXN",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURNOK",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURNZD",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURPLN",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURSEK",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURTRY",
+    "contractType": 5
+  },
+  {
+    "symbol": "EURZAR",
+    "contractType": 5
+  },
+  {
+    "symbol": "EZJ.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "FENER.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "FETUSD",
+    "contractType": 2
+  },
+  {
+    "symbol": "FILUSD",
+    "contractType": 2
+  },
+  {
+    "symbol": "FING.SE",
+    "contractType": 0
+  },
+  {
+    "symbol": "FR.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "FR40",
+    "contractType": 0
+  },
+  {
+    "symbol": "GBPCAD",
+    "contractType": 5
+  },
+  {
+    "symbol": "GBPCHF",
+    "contractType": 5
+  },
+  {
+    "symbol": "GLE.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "GLEN.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "HFG.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "HK50",
+    "contractType": 0
+  },
+  {
+    "symbol": "HO.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "INJUSD",
+    "contractType": 2
+  },
+  {
+    "symbol": "ITAU.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "KRDMD.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "LLOY.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "LTCUSD",
+    "contractType": 2
+  },
+  {
+    "symbol": "MAGALU.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "MAVI.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "MC.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "NDASEK.SE",
+    "contractType": 0
+  },
+  {
+    "symbol": "NZDCAD",
+    "contractType": 5
+  },
+  {
+    "symbol": "NZDUSD",
+    "contractType": 5
+  },
+  {
+    "symbol": "OCDO.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "OR.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "P911.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "PETROBRA.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "RNO.FR",
+    "contractType": 0
+  },
+  {
+    "symbol": "RWE.DE",
+    "contractType": 0
+  },
+  {
+    "symbol": "SAHOL.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "SHEL.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "SISE.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "SOLUSD",
+    "contractType": 2
+  },
+  {
+    "symbol": "SUZANO.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "TCELL.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "TELIA.SE",
+    "contractType": 0
+  },
+  {
+    "symbol": "THYAO.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "TSCO.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "TUPRAS.TR",
+    "contractType": 0
+  },
+  {
+    "symbol": "UK100",
+    "contractType": 0
+  },
+  {
+    "symbol": "US100",
+    "contractType": 0
+  },
+  {
+    "symbol": "US2000",
+    "contractType": 0
+  },
+  {
+    "symbol": "US30",
+    "contractType": 0
+  },
+  {
+    "symbol": "US500",
+    "contractType": 0
+  },
+  {
+    "symbol": "USDCHF",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDDKK",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDHKD",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDHUF",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDILS",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDINDEX",
+    "contractType": 1
+  },
+  {
+    "symbol": "USDJPY",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDMXN",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDNOK",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDPLN",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDSEK",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDSGD",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDTRY",
+    "contractType": 5
+  },
+  {
+    "symbol": "USDZAR",
+    "contractType": 5
+  },
+  {
+    "symbol": "VALE.BR",
+    "contractType": 0
+  },
+  {
+    "symbol": "VIX",
+    "contractType": 1
+  },
+  {
+    "symbol": "VOD.UK",
+    "contractType": 0
+  },
+  {
+    "symbol": "VOLV.SE",
+    "contractType": 0
+  },
+  {
+    "symbol": "YFIUSD",
+    "contractType": 1
+  }
+]
