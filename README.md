@@ -10,13 +10,18 @@ Node.js 24 LTS (at least 24.15.0) and npm are required. Run all commands from th
 npm ci
 ```
 
-Start PostgreSQL, configure `DATABASE_URL` in the ignored local `.env`, and prepare the separate `trading_orders_prisma_dev` database using [the Prisma guide](api/prisma/README.md). Once that database exists, apply the migration and load the development snapshot:
+On Windows, use `npm.cmd` instead of `npm` if PowerShell blocks the `npm.ps1` launcher.
+
+Start PostgreSQL, configure `DATABASE_URL` in the ignored local `.env`, and prepare the separate `trading_orders_prisma_dev` database using [the Prisma guide](api/prisma/README.md). For first-time setup of that database, apply the migration and load the development snapshot:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 npm run db:seed
+npm run db:verify
 ```
+
+For an already migrated and seeded database, start PostgreSQL and run `npm run db:verify`; do not rerun the seed just to start the application. The seed replaces all three tables' contents in one transaction.
 
 Start the local NestJS API and leave it running:
 
@@ -40,6 +45,14 @@ npm run serve:ssr:trading-orders-dashboard
 The API listens at `http://localhost:3000/` by default (`API_PORT` changes the port). The production SSR server listens at `http://localhost:4000/` by default (`PORT` changes the port). The browser needs access to the GeekSoft WebSocket endpoint for live quotes.
 
 `GET /instruments` reads PostgreSQL through Prisma and returns the original array format: `{ symbol: string, contractType: number }`, ordered by symbol. The seeded database contains 108 instruments. `GET /orders` and `GET /contract-types` still read the JSON fixtures in `api/data`. Orders are returned as `{ data }`, with an optional `status=open|closed` query parameter. The source data contains open orders only, so `status=closed` returns an empty list. Invalid status values return HTTP 400.
+
+| Endpoint              | Data source                    | Response                                                                    |
+| --------------------- | ------------------------------ | --------------------------------------------------------------------------- |
+| `GET /instruments`    | PostgreSQL via Prisma          | 108 `{ symbol, contractType }` records in the original fixture symbol order |
+| `GET /orders`         | `api/data/order-data.json`     | `{ data }` containing 213 open orders                                       |
+| `GET /contract-types` | `api/data/contract-types.json` | 6 `{ contractType, contractSize }` records                                  |
+
+Only instrument reads have moved to PostgreSQL. Adding or closing orders in the dashboard still changes browser memory only.
 
 The shared Prisma factory bounds PostgreSQL connection/handshake and pool checkout waits to **1,000 ms** (`connectionTimeoutMillis`) and each SQL statement to **2,000 ms** (`statement_timeout`). The latter is a PostgreSQL session setting: it cancels execution, including time spent waiting for a table lock, even if the HTTP caller disconnects. These fixed defaults leave about two seconds of margin against Angular's existing 5,000 ms HTTP timeout for a connection followed by a statement. They apply to the API, seed and verify, without new environment variables or a change to the seed's atomic transaction. Limits are per connection attempt/statement, not a total transaction deadline. A driver `query_timeout` would only bound the caller's wait; it is not a replacement for server cancellation and is not needed for these scenarios. Database failures return HTTP 500 with Nest's generic error body; there is no fixture or empty-array fallback. See [pg configuration](https://node-postgres.com/apis/client) and [PostgreSQL statement timeouts](https://www.postgresql.org/docs/18/runtime-config-client.html).
 
@@ -87,15 +100,19 @@ npm run db:verify
 
 Angular tests use mocked HTTP and WebSocket responses. `test:api` requires the running, migrated and seeded Prisma database configured by `DATABASE_URL`. It builds the backend and uses the Node test runner to start the real NestJS module on a free local port, with `dist/api` as its working directory. It compares all three HTTP responses with the source fixtures, checks all 108 instruments and selected symbols, and covers order status filtering and validation errors. It also inserts a unique temporary instrument, verifies that the endpoint returns it, and deletes it in cleanup to prove the response comes from the database. A database/query error or missing seed data fails the test. The server and Prisma connections close after the tests. No additional test dependencies are required.
 
-The API regression tests also use a controlled silent TCP server, a reserved loopback port with no PostgreSQL listener, and an exclusive table lock in a separate PostgreSQL session. They require bounded HTTP failures, generic error bodies, unchanged fixture routes during an outage, cleanup of timed-out/aborted connections, and graceful application/process shutdown. The lock is rolled back in `finally`, and the next request must return the original 108 instruments. Test files run serially so the lock scenario cannot interfere with the temporary-instrument test. Use only a dedicated development/test database and do not run a seed or another API test suite concurrently. These tests do not reset, migrate or reseed the database.
+The API suite contains 10 HTTP contract tests and 3 database deadline regression tests. The regressions use a controlled silent TCP server, a loopback port with no PostgreSQL listener, and an exclusive table lock in a separate PostgreSQL session. They require bounded HTTP failures, generic error bodies, unchanged fixture routes during an outage, cleanup of timed-out/aborted connections, and graceful application/process shutdown. The lock test checks `pg_stat_activity` to confirm SQL has stopped while the lock is still held, including after an HTTP abort. It rolls back in `finally`, then requires the next request to return the original 108 instruments.
+
+The lock test accepts only a loopback host (`localhost`, `127.0.0.1` or `::1`) and a database named `trading_orders_prisma_dev` in `DATABASE_URL`. Test files run serially so the lock scenario cannot interfere with the temporary-instrument test. Do not run a seed or another API test suite concurrently. Timing assertions allow 1,500 ms of scheduling/HTTP overhead above the database limits. Test requests use `Connection: close` to measure database shutdown independently of the HTTP keep-alive idle timeout. These tests do not reset, migrate or reseed the database. Run the final `db:verify` after all tests to confirm the complete 6/108/213 snapshot and cleanup.
 
 For a browser check, keep the API on port 3000 and start the production SSR server on port 4000 as above. Open a fresh page with DevTools recording Console and Network before navigation. Confirm 213 orders, 108 groups and BTCUSD, open the add-order form, and verify that Console has no `NG050x` hydration errors or unhandled application errors. Network must show no browser `GET /orders`, `/instruments` or `/contract-types` during initial hydration: the responses are in the SSR HTML's `ng-state` transfer cache. Check the WebSocket connection and subscription messages separately. A raw HTML fetch or an Angular unit test alone does not verify hydration.
+
+The production Chrome check on 2026-11-09 confirmed these criteria: HTTP 200, 213 orders and 108 groups, an interactive add-order form with a live BTCUSD quote, no hydration or unhandled application errors, and zero repeated browser GETs to the three REST endpoints. The transfer cache contained 213 orders, 108 instruments and 6 contract types. A temporary PostgreSQL-only instrument also appeared in the transfer cache on a fresh navigation and was removed in `finally`; the final database verification returned 6/108/213. The existing WebSocket opened and exchanged subscription/heartbeat and quote messages without errors during observation. This check used the current frontend/SSR build with the user's existing local API process; timeout regressions separately ran the freshly compiled API in isolated child processes.
 
 Database tests require a separately started and initialized PostgreSQL server: `npm run test:db -- --docker` uses Compose, while `npm run test:db` uses `psql` from `PATH` (or the `PSQL` executable path) and the `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` connection variables. They run transactional constraint checks and compare all SQL records against the JSON fixtures, including exact decimals and millisecond timestamps. See [database testing instructions](db/README.md#repeatable-database-tests).
 
 To run only the fixture comparison, use `npm run test:db:fixtures -- --docker` for Compose or `npm run test:db:fixtures` for a native server. Database tests do not reset or reseed the database.
 
-For the separate Prisma database, use `npm run db:generate`, `npm run db:typecheck`, `npm run db:migrate`, `npm run db:seed` and `npm run db:verify` with the local `DATABASE_URL`. Repeat seed and verification to check that the development snapshot is reproducible. The [Prisma guide](api/prisma/README.md#generate-migrate-and-seed) explains the commands and the seed's replacement strategy.
+For first-time setup of the separate Prisma database, use `npm run db:generate`, `npm run db:typecheck`, `npm run db:migrate`, `npm run db:seed` and `npm run db:verify` with the local `DATABASE_URL`. Repeating seed and verification is an optional reproducibility check on a disposable development snapshot; it replaces any additional records. Routine verification uses `db:verify` without seeding. The [Prisma guide](api/prisma/README.md#generate-migrate-and-seed) explains the commands and the seed's replacement strategy.
 
 `lint` and both formatting commands cover the frontend, API and database test scripts, including API tests and build scripts. `lint:api` checks just the backend; `lint:db` checks the database test scripts. Angular-specific lint rules apply only to `src`.
 
@@ -132,7 +149,7 @@ git ls-files -- .env node_modules dist .angular .idea api/prisma/generated
 git archive --format=zip --output=review.zip HEAD
 ```
 
-The `git ls-files` check must return no paths; stop and remove any listed local files from tracking before archiving (keep the local files). The archive includes committed files only; uncommitted changes and untracked files are omitted. Generated output, local database files, dependencies, IDE workspace files, and `.env` must stay untracked. `.gitattributes` excludes the tracked VS Code editor settings from the archive. `review.zip` itself is ignored.
+The `git ls-files` check must return no paths; stop and remove any listed local files from tracking before archiving (keep the local files). The archive includes committed files only; uncommitted changes and untracked files are omitted. Generated output, local database files, dependencies, IDE workspace files, and `.env` must stay untracked. `.gitattributes` excludes the tracked VS Code editor settings from the archive. Keep `review.zip` out of the Git index, and recreate it after committing further changes.
 
 Verify the actual ZIP, not just the index. For example, in PowerShell:
 

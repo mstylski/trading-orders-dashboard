@@ -2,7 +2,6 @@
 
 # Compiled output
 /dist
-/review.zip
 /tmp
 /out-tsc
 src/**/*.js

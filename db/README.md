@@ -1,4 +1,4 @@
-# PostgreSQL — stage 02
+# PostgreSQL — SQL setup and Prisma integration
 
 This guide preserves the historical SQL setup. The API now reads instruments through [Prisma](../api/prisma/README.md) from a separate database. `GET /orders` and `GET /contract-types` still read `api/data/*.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column or closed order data.
 
@@ -24,6 +24,8 @@ The named volume `postgres_data` preserves data across `docker compose stop` and
 ## Prisma migrations in stage 03
 
 The Prisma schema, committed migrations and repeatable fixture seed are in `api/prisma`; see [the stage 03 guide](../api/prisma/README.md). They target a separately created, initially empty `trading_orders_prisma_dev` database through the ignored local `DATABASE_URL`. The historical `trading_orders` database and SQL initialization below remain available for practice.
+
+Only `GET /instruments` uses the Prisma-managed database. The shared client factory limits connection/handshake and pool checkout to 1,000 ms and SQL statements to 2,000 ms through PostgreSQL's `statement_timeout`, including time spent waiting for locks. These session settings also apply to seed and verify; they do not alter the SQL initialization scripts, database-wide settings or committed migration. Database failures produce a generic HTTP 500 without a fixture fallback. See [Prisma data access and timeout details](../api/prisma/README.md#nestjs-data-access).
 
 Do not run the initial Prisma migration against tables already created by `db/init/01-schema.sql`. Adopting that existing database requires a separately planned baseline matching its schema and data. This stage does not establish that baseline, reset the existing database or delete its volume. Future changes to the Prisma-managed database should use new migrations, with the SQL CHECK constraints reviewed explicitly.
 
@@ -125,6 +127,8 @@ On Linux/macOS, an equivalent invocation is `PGPASSWORD=trading_local npm run te
 
 The read-only fixture comparison checks all fields, including swaps and timestamps converted back to Unix milliseconds. Numeric JSON tokens are compared as exact decimal values without rounding through JavaScript `number`. Any difference, SQL error, connection error or missing executable gives a nonzero exit status. These tests use the existing initialized database and never reset or reseed it. Separately, `npm run test:api` requires the seeded Prisma database configured by `DATABASE_URL` and verifies instrument data through the real HTTP endpoint; see [the Prisma guide](../api/prisma/README.md#generate-migrate-and-seed).
 
+The API suite runs its files serially and includes real TCP handshake failure, unavailable database, and SQL lock/timeout regressions. The exclusive-lock test only accepts a loopback connection to `trading_orders_prisma_dev`, rolls back the blocking transaction in `finally`, and verifies recovery to all 108 instruments. It also checks server-side SQL cancellation after an HTTP abort and bounded application shutdown. Do not run another API suite or seed concurrently. Run `npm run db:verify` afterwards to confirm the original 6/108/213 snapshot and removal of temporary test instruments. `test:db -- --docker` continues to target the historical `trading_orders` database, not the Prisma HTTP test database.
+
 To see the raw foreign key error yourself, execute these statements interactively, then roll back:
 
 ```sql
@@ -173,22 +177,3 @@ npm run test:db
 ```
 
 Stop the portable server with `& "$pgBin/pg_ctl.exe" -D tmp/postgresql/data -m fast -w stop`. The portable server and Compose cannot both use host port 5432 at once; stop one first or give Compose another port.
-
-## Stage 01 browser precheck — 2026-11-06
-
-Checked the running development SSR application in Chrome at `http://localhost:4200/`, with the fixture API at `http://localhost:3000/`:
-
-- The server-rendered HTML already contained the dashboard data, hydration markers and Angular transfer state (`ng-state`).
-- Chrome's console reported **112 hydrated components, 4645 nodes, 0 skipped components**, with no hydration errors.
-- Chrome's Network Fetch/XHR filter contained **no requests** after initial navigation: the browser reused the SSR HTTP transfer cache instead of repeating the three API GETs.
-- The dashboard displayed **213 orders / 108 symbols** and connected to live quotes.
-
-This closes the manual SSR/hydration precheck left from stage 01.
-
-## Stage 02 verification — 2026-11-06
-
-- PostgreSQL 18.6 started locally at `127.0.0.1:5432` using the portable Windows binaries. Both initialization scripts ran successfully through `psql`.
-- `queries.sql` returned 213 joined orders and 108 symbol groups; `verify.sql` passed all five rejection checks and rolled back its transaction.
-- A full read-back comparison matched all three JSON fixtures, including small decimal swaps and timestamps converted back to milliseconds.
-- `npm run test:api` passed all 9 HTTP tests, confirming that NestJS still serves the fixtures and returns no closed orders.
-- Compose YAML and the Markdown files passed Prettier checks. Docker Compose startup remains unverified on this machine because Docker is not installed; database behavior was verified on the native server.
