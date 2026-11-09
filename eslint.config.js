@@ -10,7 +10,7 @@ module.exports = defineConfig([
     extends: [eslint.configs.recommended, tseslint.configs.recommended, tseslint.configs.stylistic],
   },
   {
-    files: ['api/**/*.mjs'],
+    files: ['api/**/*.mjs', 'db/tests/**/*.mjs'],
     extends: [eslint.configs.recommended],
   },
   {

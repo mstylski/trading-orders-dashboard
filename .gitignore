@@ -9,6 +9,9 @@ src/**/*.js
 
 # Node
 /node_modules
+.env
+.env.*
+!.env.example
 npm-debug.log
 yarn-error.log
 
@@ -35,6 +38,7 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
+/review.zip
 /libpeerconnection.log
 testem.log
 /typings
