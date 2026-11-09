@@ -6,7 +6,10 @@ const angular = require('angular-eslint');
 
 module.exports = defineConfig([
   {
-    files: ['api/**/*.ts'],
+    ignores: ['api/prisma/generated/**'],
+  },
+  {
+    files: ['api/**/*.ts', 'prisma.config.ts'],
     extends: [eslint.configs.recommended, tseslint.configs.recommended, tseslint.configs.stylistic],
   },
   {

@@ -7,7 +7,7 @@ An Angular 22.2.1 application with server-side rendering (SSR) for viewing order
 Node.js 24 LTS (at least 24.15.0) and npm are required. Run all commands from the repository root unless noted otherwise. Install the dependencies:
 
 ```bash
-npm install
+npm ci
 ```
 
 Start the local NestJS API and leave it running:
@@ -47,7 +47,9 @@ The SSR host allowlist in `angular.json` currently includes `localhost` and `127
 
 ## PostgreSQL
 
-The repository includes an independent PostgreSQL 18.6 database for SQL practice. PostgreSQL and Docker are optional for running the dashboard and API. NestJS continues to serve the JSON fixtures; it has no database connection or Prisma dependency.
+The repository includes a PostgreSQL 18.6 setup for SQL practice and Prisma ORM 7 tooling for the backend data model. PostgreSQL and Docker are optional for running the dashboard and API. NestJS continues to serve the JSON fixtures without opening a database connection.
+
+For stage 03, follow [the Prisma guide](api/prisma/README.md) to create a separate empty `trading_orders_prisma_dev` database, apply the committed migration and explicitly run the repeatable seed. The schema and scripts live in `api/prisma`, with configuration in the root `prisma.config.ts`. Keep `DATABASE_URL` and its password in the ignored `.env`; the example configuration contains no secret. The initial migration must not target the existing manually initialized SQL database.
 
 With Docker Desktop running (Linux containers), copy `.env.example` to `.env` and set a nonempty `POSTGRES_PASSWORD` before starting Compose. The local `.env` file is ignored by Git. You can also supply the password through an environment variable; Compose rejects a missing or empty value.
 
@@ -59,7 +61,7 @@ docker compose exec postgres psql -X -U trading -d trading_orders
 
 Initialization creates `contract_types`, `instruments`, and `orders` with primary and foreign keys, then loads all 6 contract types, 108 instruments, and 213 orders from a SQL snapshot of `api/data`. See [the database guide](db/README.md) for the model, JOIN and GROUP BY queries, constraint verification, and a Windows setup without Docker.
 
-Compose exposes PostgreSQL at `127.0.0.1:5432`, with database `trading_orders`, user `trading`, and the password configured above. Set `POSTGRES_PORT` to change the host port. The `postgres_data` volume preserves data across stops; initialization scripts run only when the data directory is empty, so editing them does not update an existing database. Versioned migrations are planned for the NestJS/database integration; see [the migration plan](db/README.md#schema-changes-in-the-next-stage).
+Compose exposes PostgreSQL at `127.0.0.1:5432`, with database `trading_orders`, user `trading`, and the password configured above. Set `POSTGRES_PORT` to change the host port. The `postgres_data` volume preserves data across stops; initialization scripts run only when the data directory is empty, so editing them does not update an existing database. Prisma migrations currently manage the separate stage 03 database; see [migration boundaries](db/README.md#prisma-migrations-in-stage-03).
 
 ## Verifying the project
 
@@ -77,12 +79,14 @@ Database tests require a separately started and initialized PostgreSQL server: `
 
 To run only the fixture comparison, use `npm run test:db:fixtures -- --docker` for Compose or `npm run test:db:fixtures` for a native server. Database tests do not reset or reseed the database.
 
+For the separate Prisma database, use `npm run db:generate`, `npm run db:typecheck`, `npm run db:migrate`, `npm run db:seed` and `npm run db:verify` with the local `DATABASE_URL`. Repeat seed and verification to check that the development snapshot is reproducible. The [Prisma guide](api/prisma/README.md#generate-migrate-and-seed) explains the commands and the seed's replacement strategy.
+
 `lint` and both formatting commands cover the frontend, API and database test scripts, including API tests and build scripts. `lint:api` checks just the backend; `lint:db` checks the database test scripts. Angular-specific lint rules apply only to `src`.
 
 ## Structure and data flow
 
-- `api` contains the NestJS HTTP endpoints, JSON fixtures, build scripts, and API tests.
-- `db` contains the independent PostgreSQL schema, seed, example queries, and database tests; `compose.yaml` configures its container.
+- `api` contains the NestJS HTTP endpoints, JSON fixtures, build scripts, and API tests. `api/prisma` contains the Prisma schema, migrations, fixture seed and verification scripts for a separate database.
+- `db` preserves the stage 02 SQL schema, seed, example queries, and database tests; `compose.yaml` configures the PostgreSQL container.
 - `src/app/features/orders/data` fetches and validates data from three HTTP endpoints and handles the WebSocket connection, symbol subscriptions, and reconnection.
 - `src/app/features/orders/state` stores orders and exposes signals and operations for adding and closing them. The store is scoped to the page and releases the connection when the page is destroyed.
 - `src/app/features/orders/domain` contains pure calculations for contract values, profits, and groups.
@@ -108,7 +112,8 @@ Adding and closing orders changes only the state in browser memory. Refreshing t
 After committing all files intended for review (including `db/` and `compose.yaml`), create an archive from the committed Git tree:
 
 ```bash
+git ls-files -- .env dist .angular .idea api/prisma/generated
 git archive --format=zip --output=review.zip HEAD
 ```
 
-This includes committed files only; uncommitted changes and untracked files are omitted. Generated output, local database files, dependencies, IDE workspace files, and `.env` must stay untracked. Check the archive contents before sharing; `dist/`, `.angular/cache/`, and `.idea/workspace.xml` should be absent.
+The `git ls-files` check must return no paths; stop and remove any listed local files from tracking before archiving. This includes committed files only; uncommitted changes and untracked files are omitted. Generated output, local database files, dependencies, IDE workspace files, and `.env` must stay untracked. Check the archive contents before sharing; `.env`, `dist/`, `.angular/`, `.idea/`, and `api/prisma/generated/` should be absent. Keep `.env.example`, source files, migrations and the lockfile. Git ignore rules do not filter a ZIP created by manually packing the project folder.

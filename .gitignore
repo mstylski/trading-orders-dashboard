@@ -9,6 +9,7 @@ src/**/*.js
 
 # Node
 /node_modules
+/api/prisma/generated/
 .env
 .env.*
 !.env.example
@@ -38,7 +39,6 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
-/review.zip
 /libpeerconnection.log
 testem.log
 /typings

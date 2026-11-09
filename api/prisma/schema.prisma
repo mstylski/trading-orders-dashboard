@@ -1,0 +1,42 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "./generated"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// CHECK constraints and unconstrained NUMERIC are preserved in migration.sql.
+model ContractType {
+  contractType Int          @id @map("contract_type") @db.SmallInt
+  contractSize Decimal      @map("contract_size") @db.Decimal
+  instruments  Instrument[]
+
+  @@map("contract_types")
+}
+
+model Instrument {
+  symbol       String       @id @db.Text
+  contractType Int          @map("contract_type") @db.SmallInt
+  contract     ContractType @relation(fields: [contractType], references: [contractType], onDelete: Restrict, onUpdate: Restrict, map: "instruments_contract_type_fk")
+  orders       Order[]
+
+  @@index([contractType], map: "instruments_contract_type_idx")
+  @@map("instruments")
+}
+
+model Order {
+  id         BigInt     @id
+  symbol     String     @db.Text
+  side       String     @db.Text
+  size       Decimal    @db.Decimal
+  openPrice  Decimal    @map("open_price") @db.Decimal
+  openTime   DateTime   @map("open_time") @db.Timestamptz(6)
+  swap       Decimal    @db.Decimal
+  instrument Instrument @relation(fields: [symbol], references: [symbol], onDelete: Restrict, onUpdate: Restrict, map: "orders_instrument_fk")
+
+  @@index([symbol], map: "orders_symbol_idx")
+  @@map("orders")
+}

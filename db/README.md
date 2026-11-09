@@ -1,6 +1,6 @@
 # PostgreSQL — stage 02
 
-This database is independent of NestJS. The API still reads `api/data/*.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column, no closed order data, and no Prisma integration.
+This guide preserves the SQL setup, independent of NestJS. The API still reads `api/data/*.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column or closed order data. Stage 03 adds [Prisma tooling](../api/prisma/README.md) against a separate database; it does not connect the HTTP endpoints to PostgreSQL.
 
 ## Start with Docker Compose
 
@@ -21,9 +21,11 @@ The healthcheck uses `pg_isready -h 127.0.0.1` to check TCP readiness. The tempo
 
 The named volume `postgres_data` preserves data across `docker compose stop` and `docker compose down`. Start again with `docker compose up -d --wait`. The image runs `init/01-schema.sql` followed by `init/02-seed.sql` only when its data directory is empty. Editing those files does not modify an existing database; they are initial setup scripts, not repeatable migrations. See the [official image documentation](https://hub.docker.com/_/postgres) for initialization and the PostgreSQL 18 volume layout.
 
-## Schema changes in the next stage
+## Prisma migrations in stage 03
 
-When NestJS starts using PostgreSQL, introduce versioned migrations (for example, Prisma Migrate) alongside that integration. Establish a baseline matching the current schema, then add each schema change as a new migration. Apply pending migrations to the existing database without deleting its volume. Verify both a fresh installation and an upgrade with existing records; running the migration command again should leave no pending changes and preserve the data.
+The Prisma schema, committed migrations and repeatable fixture seed are in `api/prisma`; see [the stage 03 guide](../api/prisma/README.md). They target a separately created, initially empty `trading_orders_prisma_dev` database through the ignored local `DATABASE_URL`. The historical `trading_orders` database and SQL initialization below remain available for practice.
+
+Do not run the initial Prisma migration against tables already created by `db/init/01-schema.sql`. Adopting that existing database requires a separately planned baseline matching its schema and data. This stage does not establish that baseline, reset the existing database or delete its volume. Future changes to the Prisma-managed database should use new migrations, with the SQL CHECK constraints reviewed explicitly.
 
 ## Checking first-time initialization
 
