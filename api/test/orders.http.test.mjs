@@ -1,10 +1,13 @@
 import 'reflect-metadata';
+import 'dotenv/config';
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import { after, before, describe, it } from 'node:test';
 import { NestFactory } from '@nestjs/core';
+import { createPrismaClient } from '../../dist/api/prisma/client.js';
 import { AppModule } from '../../dist/api/src/app.module.js';
 
 function fixture(name) {
@@ -15,7 +18,7 @@ const orders = fixture('order-data.json');
 const instruments = fixture('instruments.json');
 const contractTypes = fixture('contract-types.json');
 
-describe('NestJS HTTP contract (compiled API, working directory: dist/api)', () => {
+describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directory: dist/api)', () => {
   let app;
   let baseUrl;
   const originalCwd = process.cwd();
@@ -80,11 +83,55 @@ describe('NestJS HTTP contract (compiled API, working directory: dist/api)', () 
     });
   }
 
-  it('GET /instruments returns the instrument dictionary', async () => {
+  it('GET /instruments returns all 108 seeded instruments in the original JSON format', async () => {
     const body = await get('/instruments');
     assert.deepEqual(body, instruments);
     assert.equal(body.length, 108);
     assert.deepEqual(body[0], { symbol: 'AAPL.US', contractType: 0 });
+    for (const instrument of [
+      { symbol: 'BTCUSD', contractType: 0 },
+      { symbol: 'VIX', contractType: 1 },
+      { symbol: 'ARBUSD', contractType: 3 },
+      { symbol: 'ADAUSD', contractType: 4 },
+      { symbol: 'USDPLN', contractType: 5 },
+    ]) {
+      assert.deepEqual(
+        body.find(({ symbol }) => symbol === instrument.symbol),
+        instrument,
+      );
+    }
+  });
+
+  it('GET /instruments reads current PostgreSQL rows instead of the JSON fixture', async () => {
+    const prisma = createPrismaClient();
+    const instrument = { symbol: `INTEGRATION_${randomUUID()}`, contractType: 0 };
+    let created = false;
+
+    try {
+      await prisma.instrument.create({ data: instrument });
+      created = true;
+
+      const body = await get('/instruments');
+      assert.equal(body.length, 109);
+      assert.deepEqual(
+        body.find(({ symbol }) => symbol === instrument.symbol),
+        instrument,
+      );
+      assert.deepEqual(
+        body.filter(({ symbol }) => symbol !== instrument.symbol),
+        instruments,
+      );
+      assert.deepEqual(await get('/orders'), orders);
+      assert.deepEqual(await get('/contract-types'), contractTypes);
+    } finally {
+      try {
+        if (created) await prisma.instrument.delete({ where: { symbol: instrument.symbol } });
+      } finally {
+        await prisma.$disconnect();
+      }
+    }
+
+    assert.deepEqual(await get('/instruments'), instruments);
   });
 
   it('GET /contract-types returns the contract size dictionary', async () => {

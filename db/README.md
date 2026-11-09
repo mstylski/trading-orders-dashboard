@@ -1,6 +1,6 @@
 # PostgreSQL — stage 02
 
-This guide preserves the SQL setup, independent of NestJS. The API still reads `api/data/*.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column or closed order data. Stage 03 adds [Prisma tooling](../api/prisma/README.md) against a separate database; it does not connect the HTTP endpoints to PostgreSQL.
+This guide preserves the historical SQL setup. The API now reads instruments through [Prisma](../api/prisma/README.md) from a separate database. `GET /orders` and `GET /contract-types` still read `api/data/*.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column or closed order data.
 
 ## Start with Docker Compose
 
@@ -123,7 +123,7 @@ On Linux/macOS, an equivalent invocation is `PGPASSWORD=trading_local npm run te
 
 `verify.sql` checks seed/JOIN counts and **39 expected rejections**: both missing foreign keys, deletion and updates of referenced keys, zero order size, invalid side, negative opening price, infinite opening time, duplicate/zero/negative order IDs, zero and negative contract sizes, empty and whitespace-only instrument symbols, `NaN` and both infinities in every numeric column, and `NULL` in all 11 required columns across the three tables. Each case catches its expected SQLSTATE (`23503`, `23001`, `23514`, `23505`, or `23502`); a different error fails the command. Expected rejections print `PASS` notices. Unexpected acceptance raises an exception and makes the command exit with an error. All constraint checks run in a transaction that is rolled back.
 
-The read-only fixture comparison checks all fields, including swaps and timestamps converted back to Unix milliseconds. Numeric JSON tokens are compared as exact decimal values without rounding through JavaScript `number`. Any difference, SQL error, connection error or missing executable gives a nonzero exit status. These tests use the existing initialized database and never reset or reseed it. NestJS tests remain independent of PostgreSQL.
+The read-only fixture comparison checks all fields, including swaps and timestamps converted back to Unix milliseconds. Numeric JSON tokens are compared as exact decimal values without rounding through JavaScript `number`. Any difference, SQL error, connection error or missing executable gives a nonzero exit status. These tests use the existing initialized database and never reset or reseed it. Separately, `npm run test:api` requires the seeded Prisma database configured by `DATABASE_URL` and verifies instrument data through the real HTTP endpoint; see [the Prisma guide](../api/prisma/README.md#generate-migrate-and-seed).
 
 To see the raw foreign key error yourself, execute these statements interactively, then roll back:
 

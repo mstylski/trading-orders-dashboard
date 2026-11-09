@@ -12,11 +12,6 @@ interface Order {
   readonly swap: number;
 }
 
-interface Instrument {
-  readonly symbol: string;
-  readonly contractType: number;
-}
-
 interface ContractType {
   readonly contractType: number;
   readonly contractSize: number;
@@ -29,7 +24,6 @@ function readFixture<T>(name: string): T {
 @Injectable()
 export class OrdersService {
   private readonly orders = readFixture<{ data: Order[] }>('order-data.json').data;
-  private readonly instrumentList = readFixture<Instrument[]>('instruments.json');
   private readonly contractTypeList = readFixture<ContractType[]>('contract-types.json');
 
   list(status?: string) {
@@ -47,10 +41,6 @@ export class OrdersService {
     return {
       data: normalizedStatus === 'closed' ? [] : this.orders,
     };
-  }
-
-  instruments(): readonly Instrument[] {
-    return this.instrumentList;
   }
 
   contractTypes(): readonly ContractType[] {

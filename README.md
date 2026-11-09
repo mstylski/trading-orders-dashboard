@@ -10,6 +10,14 @@ Node.js 24 LTS (at least 24.15.0) and npm are required. Run all commands from th
 npm ci
 ```
 
+Start PostgreSQL, configure `DATABASE_URL` in the ignored local `.env`, and prepare the separate `trading_orders_prisma_dev` database using [the Prisma guide](api/prisma/README.md). Once that database exists, apply the migration and load the development snapshot:
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:seed
+```
+
 Start the local NestJS API and leave it running:
 
 ```bash
@@ -31,9 +39,11 @@ npm run serve:ssr:trading-orders-dashboard
 
 The API listens at `http://localhost:3000/` by default (`API_PORT` changes the port). The production SSR server listens at `http://localhost:4000/` by default (`PORT` changes the port). The browser needs access to the GeekSoft WebSocket endpoint for live quotes.
 
-The API serves copies of the original JSON data in `api/data`. `GET /orders` returns all matching orders as `{ data }`, with an optional `status=open|closed` query parameter. The source data contains open orders only, so `status=closed` returns an empty list. `GET /instruments` and `GET /contract-types` return the original arrays. Invalid status values return HTTP 400.
+`GET /instruments` reads PostgreSQL through Prisma and returns the original array format: `{ symbol: string, contractType: number }`, ordered by symbol. The seeded database contains 108 instruments. `GET /orders` and `GET /contract-types` still read the JSON fixtures in `api/data`. Orders are returned as `{ data }`, with an optional `status=open|closed` query parameter. The source data contains open orders only, so `status=closed` returns an empty list. Invalid status values return HTTP 400.
 
-`npm run build:api` compiles the backend and copies its JSON files into `dist/api/data`. The API reads data relative to its module files, so the compiled artifact can run from another working directory without the source `api/data` folder. Node dependencies must still be installed. For example, from the project root:
+The shared Prisma factory bounds PostgreSQL connection/handshake and pool checkout waits to **1,000 ms** (`connectionTimeoutMillis`) and each SQL statement to **2,000 ms** (`statement_timeout`). The latter is a PostgreSQL session setting: it cancels execution, including time spent waiting for a table lock, even if the HTTP caller disconnects. These fixed defaults leave about two seconds of margin against Angular's existing 5,000 ms HTTP timeout for a connection followed by a statement. They apply to the API, seed and verify, without new environment variables or a change to the seed's atomic transaction. Limits are per connection attempt/statement, not a total transaction deadline. A driver `query_timeout` would only bound the caller's wait; it is not a replacement for server cancellation and is not needed for these scenarios. Database failures return HTTP 500 with Nest's generic error body; there is no fixture or empty-array fallback. See [pg configuration](https://node-postgres.com/apis/client) and [PostgreSQL statement timeouts](https://www.postgresql.org/docs/18/runtime-config-client.html).
+
+`npm run build:api` generates the Prisma client, compiles the backend and client into `dist/api`, and copies its JSON files into `dist/api/data`. The API reads fixtures relative to its module files, so the compiled artifact can run from another working directory without the source `api/data` folder. Node dependencies and `DATABASE_URL` are required at runtime. The local `.env` is loaded from the launch working directory; when launching elsewhere, supply `DATABASE_URL` through the environment. For example, with that variable already set, run from the project root:
 
 ```bash
 npm run build:api
@@ -47,9 +57,9 @@ The SSR host allowlist in `angular.json` currently includes `localhost` and `127
 
 ## PostgreSQL
 
-The repository includes a PostgreSQL 18.6 setup for SQL practice and Prisma ORM 7 tooling for the backend data model. PostgreSQL and Docker are optional for running the dashboard and API. NestJS continues to serve the JSON fixtures without opening a database connection.
+The repository includes a PostgreSQL 18.6 setup for SQL practice and Prisma ORM 7 for the backend data model. PostgreSQL is required for `GET /instruments` and the dashboard's initial data load; Docker is optional. The other two endpoints continue to serve JSON fixtures.
 
-For stage 03, follow [the Prisma guide](api/prisma/README.md) to create a separate empty `trading_orders_prisma_dev` database, apply the committed migration and explicitly run the repeatable seed. The schema and scripts live in `api/prisma`, with configuration in the root `prisma.config.ts`. Keep `DATABASE_URL` and its password in the ignored `.env`; the example configuration contains no secret. The initial migration must not target the existing manually initialized SQL database.
+Follow [the Prisma guide](api/prisma/README.md) to create a separate empty `trading_orders_prisma_dev` database, apply the committed migration and explicitly run the repeatable seed. The schema and scripts live in `api/prisma`, with configuration in the root `prisma.config.ts`. Keep `DATABASE_URL` and its password in the ignored `.env`; the example configuration contains no secret. The initial migration must not target the existing manually initialized SQL database.
 
 With Docker Desktop running (Linux containers), copy `.env.example` to `.env` and set a nonempty `POSTGRES_PASSWORD` before starting Compose. The local `.env` file is ignored by Git. You can also supply the password through an environment variable; Compose rejects a missing or empty value.
 
@@ -66,14 +76,20 @@ Compose exposes PostgreSQL at `127.0.0.1:5432`, with database `trading_orders`, 
 ## Verifying the project
 
 ```bash
-npm run build
-npm test -- --watch=false
-npm run test:api
-npm run lint
+npm run db:typecheck
 npm run format:check
+npm run lint
+npm run test:api
+npm test -- --watch=false
+npm run build
+npm run db:verify
 ```
 
-Angular tests use mocked HTTP and WebSocket responses. `test:api` builds the backend and uses the Node test runner to start the real NestJS module on a free local port, with `dist/api` as its working directory. It checks all three HTTP endpoints against the source fixtures, status filtering, invalid queries, and recovery after validation errors. The server closes after the tests. No additional test dependencies are required.
+Angular tests use mocked HTTP and WebSocket responses. `test:api` requires the running, migrated and seeded Prisma database configured by `DATABASE_URL`. It builds the backend and uses the Node test runner to start the real NestJS module on a free local port, with `dist/api` as its working directory. It compares all three HTTP responses with the source fixtures, checks all 108 instruments and selected symbols, and covers order status filtering and validation errors. It also inserts a unique temporary instrument, verifies that the endpoint returns it, and deletes it in cleanup to prove the response comes from the database. A database/query error or missing seed data fails the test. The server and Prisma connections close after the tests. No additional test dependencies are required.
+
+The API regression tests also use a controlled silent TCP server, a reserved loopback port with no PostgreSQL listener, and an exclusive table lock in a separate PostgreSQL session. They require bounded HTTP failures, generic error bodies, unchanged fixture routes during an outage, cleanup of timed-out/aborted connections, and graceful application/process shutdown. The lock is rolled back in `finally`, and the next request must return the original 108 instruments. Test files run serially so the lock scenario cannot interfere with the temporary-instrument test. Use only a dedicated development/test database and do not run a seed or another API test suite concurrently. These tests do not reset, migrate or reseed the database.
+
+For a browser check, keep the API on port 3000 and start the production SSR server on port 4000 as above. Open a fresh page with DevTools recording Console and Network before navigation. Confirm 213 orders, 108 groups and BTCUSD, open the add-order form, and verify that Console has no `NG050x` hydration errors or unhandled application errors. Network must show no browser `GET /orders`, `/instruments` or `/contract-types` during initial hydration: the responses are in the SSR HTML's `ng-state` transfer cache. Check the WebSocket connection and subscription messages separately. A raw HTML fetch or an Angular unit test alone does not verify hydration.
 
 Database tests require a separately started and initialized PostgreSQL server: `npm run test:db -- --docker` uses Compose, while `npm run test:db` uses `psql` from `PATH` (or the `PSQL` executable path) and the `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` connection variables. They run transactional constraint checks and compare all SQL records against the JSON fixtures, including exact decimals and millisecond timestamps. See [database testing instructions](db/README.md#repeatable-database-tests).
 
@@ -85,7 +101,7 @@ For the separate Prisma database, use `npm run db:generate`, `npm run db:typeche
 
 ## Structure and data flow
 
-- `api` contains the NestJS HTTP endpoints, JSON fixtures, build scripts, and API tests. `api/prisma` contains the Prisma schema, migrations, fixture seed and verification scripts for a separate database.
+- `api` contains the NestJS HTTP endpoints, JSON fixtures, build scripts, and API tests. `api/src/prisma` provides the shared Prisma dependency through NestJS DI; `api/src/instruments` reads and maps instrument records. `api/prisma` contains the Prisma client factory, schema, migrations, fixture seed and verification scripts for a separate database.
 - `db` preserves the stage 02 SQL schema, seed, example queries, and database tests; `compose.yaml` configures the PostgreSQL container.
 - `src/app/features/orders/data` fetches and validates data from three HTTP endpoints and handles the WebSocket connection, symbol subscriptions, and reconnection.
 - `src/app/features/orders/state` stores orders and exposes signals and operations for adding and closing them. The store is scoped to the page and releases the connection when the page is destroyed.
@@ -112,8 +128,35 @@ Adding and closing orders changes only the state in browser memory. Refreshing t
 After committing all files intended for review (including `db/` and `compose.yaml`), create an archive from the committed Git tree:
 
 ```bash
-git ls-files -- .env dist .angular .idea api/prisma/generated
+git ls-files -- .env node_modules dist .angular .idea api/prisma/generated
 git archive --format=zip --output=review.zip HEAD
 ```
 
-The `git ls-files` check must return no paths; stop and remove any listed local files from tracking before archiving. This includes committed files only; uncommitted changes and untracked files are omitted. Generated output, local database files, dependencies, IDE workspace files, and `.env` must stay untracked. Check the archive contents before sharing; `.env`, `dist/`, `.angular/`, `.idea/`, and `api/prisma/generated/` should be absent. Keep `.env.example`, source files, migrations and the lockfile. Git ignore rules do not filter a ZIP created by manually packing the project folder.
+The `git ls-files` check must return no paths; stop and remove any listed local files from tracking before archiving (keep the local files). The archive includes committed files only; uncommitted changes and untracked files are omitted. Generated output, local database files, dependencies, IDE workspace files, and `.env` must stay untracked. `.gitattributes` excludes the tracked VS Code editor settings from the archive. `review.zip` itself is ignored.
+
+Verify the actual ZIP, not just the index. For example, in PowerShell:
+
+```powershell
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [IO.Compression.ZipFile]::OpenRead((Join-Path $PWD 'review.zip'))
+try {
+  $entries = @($archive.Entries.FullName)
+  $forbidden = @($entries | Where-Object {
+    $_ -match '(^|/)(\.env|node_modules|dist|\.angular|\.idea|\.vscode)(/|$)' -or
+    $_ -match '^api/prisma/generated(/|$)'
+  })
+  if ($forbidden.Count) { throw 'Archive contains local or generated files.' }
+  foreach ($required in @('.env.example', 'package.json', 'package-lock.json',
+    'api/data/instruments.json', 'api/data/order-data.json', 'api/data/contract-types.json',
+    'api/prisma/schema.prisma', 'api/prisma/migrations/migration_lock.toml',
+    'api/prisma/migrations/20261109000100_init/migration.sql',
+    'api/src/instruments/instruments.service.ts', 'src/main.ts', 'src/main.server.ts')) {
+    if ($required -notin $entries) { throw "Missing required file: $required" }
+  }
+  "Verified $($entries.Count) archive entries."
+} finally {
+  $archive.Dispose()
+}
+```
+
+Keep all source files, fixtures, schema, migration history and lockfile. Git ignore rules do not filter a ZIP created by manually packing the project folder. Never share the local `.env` or copy its password into a review report.

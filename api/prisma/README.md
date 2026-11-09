@@ -1,6 +1,6 @@
 # Prisma
 
-Prisma ORM 7.10.1 describes and seeds the PostgreSQL model independently of the HTTP API. NestJS still serves `api/data/*.json`, and Angular continues to consume those responses. Connecting an endpoint to the generated client is a later stage.
+Prisma ORM 7.10.1 describes and seeds the PostgreSQL model and supplies instrument data to NestJS. `GET /instruments` reads the `instruments` table through the generated client; `GET /orders` and `GET /contract-types` still serve `api/data/*.json`. Angular uses the same HTTP contract, SSR and HTTP Transfer Cache.
 
 Run the commands below from the repository root. Node.js 24 LTS and a running PostgreSQL server are required; Docker is optional. The root `prisma.config.ts` locates the backend schema, migrations and seed and reads `DATABASE_URL` from the ignored local `.env` file.
 
@@ -50,11 +50,21 @@ npm run db:verify
 npm run test:api
 ```
 
-`db:migrate` runs `prisma migrate deploy`, applying the committed migration history. Running it again applies only pending migrations. `db:seed` runs `prisma db seed` explicitly: Prisma 7 does not run the seed automatically after migration. `db:generate` creates the typed client in `api/prisma/generated`; regenerate after schema changes or a clean installation.
+`db:migrate` runs `prisma migrate deploy`, applying the committed migration history. Running it again applies only pending migrations. `db:seed` runs `prisma db seed` explicitly: Prisma 7 does not run the seed automatically after migration. `db:generate` creates the typed client in `api/prisma/generated`; `build:api` also generates it before compiling the backend and client into `dist/api`.
 
 The seed replaces the entire development snapshot in one transaction. It deletes orders, instruments and contract types, then inserts contract types, instruments and orders. A successful run leaves exactly **6 contract types, 108 instruments and 213 orders**, including when additional records existed before the run. A failed transaction preserves the previous data. Use this seed only for the intended development database: it removes additional records from these three tables.
 
-`db:verify` reads every record through Prisma and compares it with the fixtures, including exact decimal equality and millisecond timestamps. A SQL check also rejects sub-millisecond opening times, which JavaScript `Date` cannot preserve. It follows both relations, runs a SQL JOIN across all three tables, checks that the JOIN returns 213 rows and prints sample orders. Running seed and verification twice checks repeatability. `test:api` checks the existing JSON HTTP responses independently of PostgreSQL.
+`db:verify` reads every record through Prisma and compares it with the fixtures, including exact decimal equality and millisecond timestamps. A SQL check also rejects sub-millisecond opening times, which JavaScript `Date` cannot preserve. It follows both relations, runs a SQL JOIN across all three tables, checks that the JOIN returns 213 rows and prints sample orders. Running seed and verification twice checks repeatability.
+
+`test:api` requires this running, migrated and seeded database. It compares the complete `GET /instruments` response with the fixture, including 108 records and selected symbols, and verifies the other endpoints retain their fixture responses. It inserts a unique temporary instrument, checks that the HTTP endpoint returns it, then removes it in cleanup. Run it against the development database without a concurrent seed. Query failures, connection failures and missing data fail the suite instead of falling back to fixtures.
+
+## NestJS data access
+
+`PrismaModule` in `api/src/prisma` exports a shared `PrismaService` created through NestJS DI. The service wraps the existing `createPrismaClient()` factory and disconnects its client when the application closes. `InstrumentsModule` uses that shared client to select `symbol` and `contractType` from `instruments` and explicitly maps the results to the existing JSON fields and types. It sorts symbols using JavaScript string comparison to preserve fixture order independently of PostgreSQL collation (including `FR.FR` before `FR40`). There is no fixture fallback for this endpoint.
+
+The runtime reads `DATABASE_URL` from the environment or the `.env` in its launch working directory. Start the API from the repository root with `npm run start:api`; when launching the compiled artifact elsewhere, provide `DATABASE_URL` through the environment. The frontend's URLs, data validation and transfer cache configuration stay unchanged.
+
+The shared factory sets `connectionTimeoutMillis: 1000` for connection/handshake and pool checkout, and PostgreSQL `statement_timeout: 2000` for every statement, including lock waits. The combined normal wait budget stays below Angular's 5-second HTTP timeout. The server cancels timed-out SQL even after an HTTP caller disconnects; there is no Promise race or fixture fallback. A driver-only `query_timeout` does not cancel server work and is deliberately not used. Seed and verify use these same fixed limits. The seed still runs as one atomic interactive transaction (its existing Prisma transaction deadline is unchanged); the 2-second limit applies separately to each SQL statement, not to the entire seed. No database-wide configuration or applied migration is changed.
 
 To inspect the joined records with `psql`, connect to `trading_orders_prisma_dev` and run:
 
@@ -75,7 +85,7 @@ The existing [SQL queries and constraint checks](../../db/README.md#join-groupin
 - Decimal fields use `Decimal @db.Decimal`, preserving unconstrained PostgreSQL `numeric`. The migration also preserves the original SQL CHECK constraints, including finite numeric values, positive sizes/prices, valid sides and finite opening times. Review those constraints when changing the schema because Prisma does not describe CHECK constraints.
 - `fixtures.ts` uses `lossless-json` to read original numeric tokens as strings. Contract sizes, order sizes, opening prices and swaps go directly from those strings to `Prisma.Decimal`, including exponent notation, without passing through JavaScript `number`.
 - Order identifiers become `bigint`. Contract type identifiers and opening times are checked as safe integers. JSON `openTime` is already Unix milliseconds: `new Date(milliseconds)` stores the same instant in `timestamptz(6)`. Verification compares `Date.getTime()` back to the fixture milliseconds and checks `open_time = date_trunc('milliseconds', open_time)` in PostgreSQL to detect additional microseconds.
-- `client.ts` initializes `PrismaClient` with the PostgreSQL `@prisma/adapter-pg` driver adapter and `DATABASE_URL`. These scripts do not add Prisma to a NestJS module or change the JSON API contract; any future Decimal/BigInt/Date response mapping belongs at that integration boundary.
+- `client.ts` initializes `PrismaClient` with the PostgreSQL `@prisma/adapter-pg` driver adapter and `DATABASE_URL`. Both the scripts and NestJS use this factory. Instrument fields already map to JSON string and number values; Decimal/BigInt/Date response mapping remains for a later endpoint migration.
 
 For future schema changes, edit `schema.prisma` and use `npm run db:migrate:dev -- --name descriptive_change` against a dedicated development database. Inspect generated SQL before applying or committing it, especially existing CHECK constraints. The committed initial migration is sufficient for this stage; do not recreate or reset the historical SQL database.
 

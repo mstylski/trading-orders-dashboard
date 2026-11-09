@@ -10,11 +10,6 @@ export class OrdersController {
     return this.orders.list(status);
   }
 
-  @Get('instruments')
-  getInstruments() {
-    return this.orders.instruments();
-  }
-
   @Get('contract-types')
   getContractTypes() {
     return this.orders.contractTypes();
