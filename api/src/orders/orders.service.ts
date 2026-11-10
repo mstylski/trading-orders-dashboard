@@ -12,11 +12,6 @@ interface Order {
   readonly swap: number;
 }
 
-interface ContractType {
-  readonly contractType: number;
-  readonly contractSize: number;
-}
-
 function readFixture<T>(name: string): T {
   return JSON.parse(readFileSync(join(__dirname, '..', '..', 'data', name), 'utf8')) as T;
 }
@@ -24,7 +19,6 @@ function readFixture<T>(name: string): T {
 @Injectable()
 export class OrdersService {
   private readonly orders = readFixture<{ data: Order[] }>('order-data.json').data;
-  private readonly contractTypeList = readFixture<ContractType[]>('contract-types.json');
 
   list(status?: string) {
     if (status !== undefined && typeof status !== 'string') {
@@ -41,9 +35,5 @@ export class OrdersService {
     return {
       data: normalizedStatus === 'closed' ? [] : this.orders,
     };
-  }
-
-  contractTypes(): readonly ContractType[] {
-    return this.contractTypeList;
   }
 }

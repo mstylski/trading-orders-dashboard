@@ -1,6 +1,6 @@
 # Prisma
 
-Prisma ORM 7.10.1 describes and seeds the PostgreSQL model and supplies instrument data to NestJS. `GET /instruments` reads the `instruments` table through the generated client; `GET /orders` and `GET /contract-types` still serve `api/data/*.json`. Angular uses the same HTTP contract, SSR and HTTP Transfer Cache.
+Prisma ORM 7.10.1 manages the PostgreSQL model and supplies instrument and contract-type data to NestJS. `GET /instruments` and `GET /contract-types` read their tables through the generated client; `GET /orders` serves `api/data/order-data.json`. Angular loads these endpoints during SSR and reuses the responses through HTTP Transfer Cache. Adding and closing orders changes browser memory only.
 
 Run the commands below from the repository root. Node.js 24 LTS and a running PostgreSQL server are required; Docker is optional. The root `prisma.config.ts` locates the backend schema, migrations and seed and reads `DATABASE_URL` from the ignored local `.env` file.
 
@@ -33,7 +33,7 @@ docker compose up -d --wait
 docker compose exec postgres createdb -U trading trading_orders_prisma_dev
 ```
 
-Compose also maintains the historical SQL database `trading_orders`. Its initialization scripts do not populate the separately created Prisma database. Do not point the first Prisma migration at `trading_orders` or any other database whose tables were created manually. Adopting an existing database will require a separately planned baseline; this stage does not establish one. The existing native server setup is described in [the SQL guide](../../db/README.md#windows-without-docker).
+Compose also maintains the SQL database `trading_orders`. Its initialization scripts do not populate the separately created Prisma database. Do not point the initial Prisma migration at `trading_orders` or any other database whose tables were created manually; adopting an existing schema requires baselining it first. The native server setup is described in [the SQL guide](../../db/README.md#windows-without-docker).
 
 ## Generate, migrate and seed
 
@@ -45,25 +45,41 @@ npm run db:typecheck
 npm run db:migrate
 npm run db:seed
 npm run db:verify
-npm run test:api
-npm run db:verify
 ```
 
 `db:migrate` runs `prisma migrate deploy`, applying the committed migration history. Running it again applies only pending migrations. `db:seed` runs `prisma db seed` explicitly: Prisma 7 does not run the seed automatically after migration. `db:generate` creates the typed client in `api/prisma/generated`; `build:api` also generates it before compiling the backend and client into `dist/api`.
 
 The seed replaces the entire development snapshot in one transaction. It deletes orders, instruments and contract types, then inserts contract types, instruments and orders. A successful run leaves exactly **6 contract types, 108 instruments and 213 orders**, including when additional records existed before the run. A failed transaction preserves the previous data. Use this seed only for the intended development database: it removes additional records from these three tables.
 
-`db:verify` reads every record through Prisma and compares it with the fixtures, including exact decimal equality and millisecond timestamps. A SQL check also rejects sub-millisecond opening times, which JavaScript `Date` cannot preserve. It follows both relations, runs a SQL JOIN across all three tables, checks that the JOIN returns 213 rows and prints sample orders. It does not write to the database. Run it after tests to confirm the original snapshot and the removal of temporary instruments. Repeating seed and verification twice is an optional repeatability check on a disposable development snapshot; it is not required for normal startup or testing of an existing database.
+`db:verify` reads every record through Prisma and compares it with the fixtures, including exact decimal values, millisecond timestamps and relations. It also checks for sub-millisecond opening times and verifies the SQL JOIN across all three tables. It does not write to the database. For an already migrated and seeded database, use this command to verify the snapshot without rerunning the seed.
 
-`test:api` requires this running, migrated and seeded database. It compares the complete `GET /instruments` response with the fixture, including 108 records and selected symbols, and verifies the other endpoints retain their fixture responses. It inserts a unique temporary instrument, checks that the HTTP endpoint returns it, then removes it in cleanup. Run it against the development database without a concurrent seed. Query failures, connection failures and missing data fail the suite instead of falling back to fixtures.
+All three JSON files in `api/data` remain inputs to the seed, verification scripts and tests. `instruments.json` and `contract-types.json` are reference snapshots rather than runtime data sources for their HTTP endpoints.
 
-The suite runs 13 tests serially: 10 HTTP contract tests and 3 real database deadline regressions. The lock regression explicitly requires `DATABASE_URL` to name `trading_orders_prisma_dev` on a loopback host. It takes `ACCESS EXCLUSIVE` on `instruments` in a separate `pg` session, expects HTTP 500 after the SQL timeout, and checks `pg_stat_activity` to confirm cancellation before releasing the lock. It also checks cancellation after an HTTP abort, rolls back in `finally`, and requires recovery to the exact 108-record response. Other regressions use a silent local TCP server and an unavailable loopback port to check handshake deadlines, socket cleanup, generic errors, fixture route availability and natural process exit during a pending connection. They do not stop the real PostgreSQL server, reset data or apply migrations. Timing assertions allow a 1,500 ms margin; test HTTP requests use `Connection: close` to separate database cleanup from the HTTP keep-alive timeout.
+To verify the HTTP endpoints against this running, migrated and seeded database:
+
+```bash
+npm run test:api
+npm run db:verify
+```
+
+`test:api` builds the backend and checks response formats, fixture values, order filtering and validation, database reads, Decimal conversion, database failures and timeouts. Temporary instrument and contract-type records are removed after the tests. The suite also checks SQL cancellation under a table lock, recovery and application shutdown.
+
+Run the suite against `trading_orders_prisma_dev` on a loopback host (`localhost`, `127.0.0.1` or `::1`). Both the HTTP contract suite and the lock test enforce this restriction; the HTTP suite validates `DATABASE_URL` before starting NestJS or touching data. Tests run serially; do not run another API suite or seed concurrently. They use the existing database without resetting it, applying migrations or seeding it. Run `db:verify` afterwards to confirm the original snapshot and cleanup.
 
 ## NestJS data access
 
-`PrismaModule` in `api/src/prisma` exports a shared `PrismaService` created through NestJS DI. The service wraps `createPrismaClient()` and calls `$disconnect()` in `onModuleDestroy`. The API entry point enables NestJS shutdown hooks. `InstrumentsModule` uses that shared client to select `symbol` and `contractType` from `instruments` and explicitly maps the results to the existing JSON fields and types. It sorts symbols using JavaScript string comparison to preserve fixture order independently of PostgreSQL collation (including `FR.FR` before `FR40`). Database failures produce HTTP 500 with `{ "statusCode": 500, "message": "Internal server error" }`, without connection details or a fixture/empty-array fallback. The fixture-backed orders and contract types remain available during a database outage.
+`PrismaModule` in `api/src/prisma` exports a shared `PrismaService`. It wraps `createPrismaClient()` and disconnects when NestJS shuts down. Both database-backed endpoint modules use this client.
 
-The runtime reads `DATABASE_URL` from the environment or the `.env` in its launch working directory. Start the API from the repository root with `npm run start:api`; when launching the compiled artifact elsewhere, provide `DATABASE_URL` through the environment. The frontend's URLs, data validation and transfer cache configuration stay unchanged.
+| Endpoint              | Response                                           | Ordering                                                                         |
+| --------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `GET /instruments`    | `{ symbol: string, contractType: number }[]`       | Symbol, using JavaScript string comparison independently of PostgreSQL collation |
+| `GET /contract-types` | `{ contractType: number, contractSize: number }[]` | `contractType` ascending                                                         |
+
+Contract sizes are converted from Prisma `Decimal` to positive, finite JavaScript numbers and compared with the original Decimal after converting the number back to text. The six seeded sizes are `1`, `10`, `100`, `1000`, `10000` and `100000`. Overflow (`1e400`), underflow to zero (`1e-400`), precision loss (`9007199254740993`) and nonpositive values produce HTTP 500.
+
+Database failures produce HTTP 500 with `{ "statusCode": 500, "message": "Internal server error" }`, without connection details or a fixture/empty-array fallback. Fixture-backed `GET /orders` remains available during a database outage.
+
+The runtime reads `DATABASE_URL` from the environment or the `.env` in its launch working directory. Start the API from the repository root with `npm run start:api`; when launching the compiled artifact elsewhere, provide `DATABASE_URL` through the environment.
 
 The shared factory defines `DATABASE_TIMEOUTS` with the following defaults, used by the API, seed and verify without additional environment variables:
 
@@ -72,7 +88,7 @@ The shared factory defines `DATABASE_TIMEOUTS` with the following defaults, used
 | `connectionTimeoutMillis` | 1,000 ms | Bounds connection/handshake and pool checkout waits in `pg`             |
 | `statement_timeout`       | 2,000 ms | PostgreSQL cancels each SQL statement, including time waiting for locks |
 
-A connection attempt followed by one statement normally has about a 3-second wait budget, leaving about 2 seconds against Angular's existing 5-second HTTP timeout. These are per-attempt/per-statement limits, not an end-to-end HTTP deadline. An HTTP abort does not immediately cancel Prisma work; the configured database limits still bound the remaining connection/SQL operation. A driver-only `query_timeout` does not cancel server work and is not configured in the factory. The seed still runs as one atomic interactive transaction with its existing Prisma transaction deadline; the 2-second limit applies separately to each SQL statement, not to the entire seed. A timed-out seed statement fails and rolls back the transaction. No database-wide configuration or applied migration is changed.
+These limits apply per connection attempt and SQL statement rather than to an entire HTTP request or transaction. Angular's HTTP timeout is 5 seconds. If an HTTP caller disconnects, the database limits still bound the remaining operation. Each seed statement has the same SQL limit; a timed-out statement causes the transaction to roll back. The settings apply to client sessions rather than changing database-wide configuration.
 
 To inspect the joined records with `psql`, connect to `trading_orders_prisma_dev` and run:
 
@@ -85,7 +101,7 @@ JOIN contract_types AS ct ON ct.contract_type = i.contract_type
 ORDER BY o.id;
 ```
 
-The existing [SQL queries and constraint checks](../../db/README.md#join-grouping-and-constraints) can also target this database. Their `--docker` npm shortcut targets the historical `trading_orders` database; use an explicit `psql -d trading_orders_prisma_dev` command for the Prisma database.
+The [SQL queries and constraint checks](../../db/README.md#join-grouping-and-constraints) can also target this database. Their `--docker` npm shortcut targets `trading_orders`; use an explicit `psql -d trading_orders_prisma_dev` command for the Prisma database.
 
 ## Model and exact values
 
@@ -93,8 +109,8 @@ The existing [SQL queries and constraint checks](../../db/README.md#join-groupin
 - Decimal fields use `Decimal @db.Decimal`, preserving unconstrained PostgreSQL `numeric`. The migration also preserves the original SQL CHECK constraints, including finite numeric values, positive sizes/prices, valid sides and finite opening times. Review those constraints when changing the schema because Prisma does not describe CHECK constraints.
 - `fixtures.ts` uses `lossless-json` to read original numeric tokens as strings. Contract sizes, order sizes, opening prices and swaps go directly from those strings to `Prisma.Decimal`, including exponent notation, without passing through JavaScript `number`.
 - Order identifiers become `bigint`. Contract type identifiers and opening times are checked as safe integers. JSON `openTime` is already Unix milliseconds: `new Date(milliseconds)` stores the same instant in `timestamptz(6)`. Verification compares `Date.getTime()` back to the fixture milliseconds and checks `open_time = date_trunc('milliseconds', open_time)` in PostgreSQL to detect additional microseconds.
-- `client.ts` initializes `PrismaClient` with the PostgreSQL `@prisma/adapter-pg` driver adapter and `DATABASE_URL`. Both the scripts and NestJS use this factory. Instrument fields already map to JSON string and number values; Decimal/BigInt/Date response mapping remains for a later endpoint migration.
+- `client.ts` initializes `PrismaClient` with the PostgreSQL `@prisma/adapter-pg` driver adapter and `DATABASE_URL`. Both the scripts and NestJS use this factory. The orders table is populated and verified by Prisma scripts; the HTTP orders endpoint reads the JSON fixture.
 
-For future schema changes, edit `schema.prisma` and use `npm run db:migrate:dev -- --name descriptive_change` against a dedicated development database. Inspect generated SQL before applying or committing it, especially existing CHECK constraints. The committed initial migration is sufficient for this stage; do not recreate or reset the historical SQL database.
+For schema changes, edit `schema.prisma` and use `npm run db:migrate:dev -- --name descriptive_change` against a dedicated development database. Inspect generated SQL before applying or committing it, especially existing CHECK constraints. Apply committed migrations with `npm run db:migrate`.
 
 Prisma references: [Prisma 7 database drivers](https://www.prisma.io/docs/orm/v7/core-concepts/supported-databases/database-drivers), [explicit seeding](https://www.prisma.io/docs/orm/v7/prisma-migrate/workflows/seeding), and [Prisma 7 upgrade notes](https://www.prisma.io/docs/guides/upgrade-prisma-orm/v7).

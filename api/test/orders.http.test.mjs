@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import 'dotenv/config';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
@@ -18,6 +18,25 @@ const orders = fixture('order-data.json');
 const instruments = fixture('instruments.json');
 const contractTypes = fixture('contract-types.json');
 
+function assertLocalDevelopmentDatabase() {
+  const message =
+    'HTTP integration tests require DATABASE_URL to use PostgreSQL on localhost, 127.0.0.1 or ::1 with database trading_orders_prisma_dev and no connection query overrides; refusing to start the API or modify data.';
+  let databaseUrl;
+  try {
+    databaseUrl = new URL(process.env['DATABASE_URL'] ?? '');
+  } catch {
+    assert.fail(message);
+  }
+  assert(
+    ['postgres:', 'postgresql:'].includes(databaseUrl.protocol) &&
+      ['localhost', '127.0.0.1', '[::1]'].includes(databaseUrl.hostname) &&
+      // node-postgres query parameters can override the connection destination.
+      !['host', 'connectionString'].some((key) => databaseUrl.searchParams.has(key)) &&
+      databaseUrl.pathname === '/trading_orders_prisma_dev',
+    message,
+  );
+}
+
 describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directory: dist/api)', () => {
   let app;
   let baseUrl;
@@ -25,6 +44,7 @@ describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directo
 
   before(
     async () => {
+      assertLocalDevelopmentDatabase();
       // Starting outside the project root guards against paths based on process.cwd().
       process.chdir(fileURLToPath(new URL('../../dist/api/', import.meta.url)));
       app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
@@ -134,10 +154,83 @@ describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directo
     assert.deepEqual(await get('/instruments'), instruments);
   });
 
-  it('GET /contract-types returns the contract size dictionary', async () => {
+  it('GET /contract-types preserves all six fixture sizes as finite numbers in contractType order', async () => {
     const body = await get('/contract-types');
     assert.deepEqual(body, contractTypes);
     assert.equal(body.length, 6);
-    assert.deepEqual(body[0], { contractType: 0, contractSize: 1 });
+    assert.deepEqual(
+      body.map(({ contractType }) => contractType),
+      [0, 1, 2, 3, 4, 5],
+    );
+    for (const [index, row] of body.entries()) {
+      assert.deepEqual(Object.keys(row).sort(), ['contractSize', 'contractType']);
+      assert.equal(typeof row.contractSize, 'number');
+      assert(Number.isFinite(row.contractSize));
+      assert.equal(row.contractSize, contractTypes[index].contractSize);
+    }
+    assert.deepEqual(await get('/contract-types'), body);
   });
+
+  it('GET /contract-types reads a temporary PostgreSQL Decimal and cleans up to six records', async () => {
+    const prisma = createPrismaClient();
+    const contractType = randomInt(6, 32768);
+    const expected = { contractType, contractSize: 0.125 };
+    let created = false;
+
+    try {
+      await prisma.contractType.create({ data: { contractType, contractSize: '0.125' } });
+      created = true;
+
+      const body = await get('/contract-types');
+      assert.equal(body.length, 7);
+      assert.deepEqual(body, [...contractTypes, expected]);
+      assert.equal(typeof body[6].contractSize, 'number');
+      assert(Number.isFinite(body[6].contractSize));
+      assert.deepEqual(await get('/contract-types'), body);
+      assert.deepEqual(await get('/orders'), orders);
+      assert.deepEqual(await get('/instruments'), instruments);
+    } finally {
+      try {
+        if (created) await prisma.contractType.delete({ where: { contractType } });
+        assert.equal(await prisma.contractType.count(), 6);
+      } finally {
+        await prisma.$disconnect();
+      }
+    }
+
+    assert.deepEqual(await get('/contract-types'), contractTypes);
+  });
+
+  for (const [contractSize, reason] of [
+    ['1e400', 'overflows to Infinity'],
+    ['1e-400', 'underflows to zero'],
+    ['9007199254740993', 'loses integer precision'],
+  ]) {
+    it(`GET /contract-types rejects a Decimal that ${reason}`, async () => {
+      const prisma = createPrismaClient();
+      const contractType = randomInt(6, 32768);
+      let created = false;
+
+      try {
+        // PostgreSQL NUMERIC preserves these values; JavaScript Number cannot.
+        await prisma.contractType.create({ data: { contractType, contractSize } });
+        created = true;
+
+        assert.deepEqual(await get('/contract-types', 500), {
+          statusCode: 500,
+          message: 'Internal server error',
+        });
+        assert.deepEqual(await get('/orders'), orders);
+      } finally {
+        try {
+          if (created) await prisma.contractType.delete({ where: { contractType } });
+          assert.equal(await prisma.contractType.count(), 6);
+        } finally {
+          await prisma.$disconnect();
+        }
+      }
+
+      assert.deepEqual(await get('/contract-types'), contractTypes);
+    });
+  }
 });

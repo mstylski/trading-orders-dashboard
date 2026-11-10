@@ -9,9 +9,4 @@ export class OrdersController {
   getOrders(@Query('status') status?: string) {
     return this.orders.list(status);
   }
-
-  @Get('contract-types')
-  getContractTypes() {
-    return this.orders.contractTypes();
-  }
 }

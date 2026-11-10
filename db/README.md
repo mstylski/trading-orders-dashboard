@@ -1,6 +1,6 @@
 # PostgreSQL — SQL setup and Prisma integration
 
-This guide preserves the historical SQL setup. The API now reads instruments through [Prisma](../api/prisma/README.md) from a separate database. `GET /orders` and `GET /contract-types` still read `api/data/*.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column or closed order data.
+This guide covers the standalone SQL setup for queries and database tests. The API reads instruments and contract types through [Prisma](../api/prisma/README.md) from a separate database. `GET /orders` reads `api/data/order-data.json`, including an empty response for `GET /orders?status=closed`. There is no `status` column or closed order data. Adding and closing orders in the dashboard changes browser memory only.
 
 ## Start with Docker Compose
 
@@ -21,20 +21,20 @@ The healthcheck uses `pg_isready -h 127.0.0.1` to check TCP readiness. The tempo
 
 The named volume `postgres_data` preserves data across `docker compose stop` and `docker compose down`. Start again with `docker compose up -d --wait`. The image runs `init/01-schema.sql` followed by `init/02-seed.sql` only when its data directory is empty. Editing those files does not modify an existing database; they are initial setup scripts, not repeatable migrations. See the [official image documentation](https://hub.docker.com/_/postgres) for initialization and the PostgreSQL 18 volume layout.
 
-## Prisma migrations in stage 03
+## Prisma migrations
 
-The Prisma schema, committed migrations and repeatable fixture seed are in `api/prisma`; see [the stage 03 guide](../api/prisma/README.md). They target a separately created, initially empty `trading_orders_prisma_dev` database through the ignored local `DATABASE_URL`. The historical `trading_orders` database and SQL initialization below remain available for practice.
+The Prisma schema, committed migrations and repeatable fixture seed are in `api/prisma`; see [the Prisma guide](../api/prisma/README.md). They target a separately created, initially empty `trading_orders_prisma_dev` database through the ignored local `DATABASE_URL`. The `trading_orders` database and SQL initialization below are available for SQL practice and database tests.
 
-Only `GET /instruments` uses the Prisma-managed database. The shared client factory limits connection/handshake and pool checkout to 1,000 ms and SQL statements to 2,000 ms through PostgreSQL's `statement_timeout`, including time spent waiting for locks. These session settings also apply to seed and verify; they do not alter the SQL initialization scripts, database-wide settings or committed migration. Database failures produce a generic HTTP 500 without a fixture fallback. See [Prisma data access and timeout details](../api/prisma/README.md#nestjs-data-access).
+`GET /instruments` and `GET /contract-types` use the Prisma-managed database. Instruments are sorted by symbol and contract types by `contractType`. Contract sizes are returned as finite JSON numbers. Database errors or a contract size that cannot be converted to a finite number produce a generic HTTP 500; fixture-backed `GET /orders` remains available during a database outage. The shared client limits connection and pool waits to 1,000 ms and SQL statements to 2,000 ms, including lock waits. See [Prisma data access and timeout details](../api/prisma/README.md#nestjs-data-access).
 
-Do not run the initial Prisma migration against tables already created by `db/init/01-schema.sql`. Adopting that existing database requires a separately planned baseline matching its schema and data. This stage does not establish that baseline, reset the existing database or delete its volume. Future changes to the Prisma-managed database should use new migrations, with the SQL CHECK constraints reviewed explicitly.
+Apply the initial Prisma migration to an empty database. A database whose tables were created by `db/init/01-schema.sql` requires a baseline matching its schema and data before Prisma can manage it. Use new migrations for subsequent changes to the Prisma-managed database, and inspect the SQL CHECK constraints when changing the schema.
 
 ## Checking first-time initialization
 
 Use a separate Compose project and an unused port to test a fresh volume without touching the normal database. After configuring the password, run in a separate PowerShell terminal:
 
 ```powershell
-$env:COMPOSE_PROJECT_NAME = 'trading-orders-review-1'
+$env:COMPOSE_PROJECT_NAME = 'trading-orders-init-check-1'
 $env:POSTGRES_PORT = '55432'
 docker compose up -d --wait
 npm run test:db -- --docker
@@ -42,7 +42,7 @@ docker compose logs postgres
 docker compose down
 ```
 
-Both commands use `COMPOSE_PROJECT_NAME`, so the tests target this isolated service. Check that initialization finishes before the final TCP server is ready and the service becomes healthy. Repeat with a new project name such as `trading-orders-review-2` and a free port to exercise another empty volume. `down` preserves each project's volume; do not use volume deletion to apply schema changes to an existing database.
+Compose and the database tests use `COMPOSE_PROJECT_NAME`, so the tests target this isolated service. Check that initialization finishes before the final TCP server is ready and the service becomes healthy. Repeat with a new project name such as `trading-orders-init-check-2` and a free port to exercise another empty volume. `down` preserves each project's volume; use migrations to apply schema changes to an existing database.
 
 ## Model
 
@@ -74,7 +74,7 @@ erDiagram
 - All fields are required. `side` allows only `BUY` and `SELL`; contract size, order size and opening price must be positive and finite. Swap can be negative, zero or positive, and must be finite. Foreign key columns have indexes.
 - `numeric` keeps decimal values exactly, including small swaps such as `-0.00000026`. No fixed scale rounds the fixture values.
 - JSON `openTime` is Unix time in milliseconds. The seed stores the same instant as `timestamptz` with explicit UTC offsets. To return milliseconds later, use `(extract(epoch FROM open_time) * 1000)::bigint`.
-- The seed is a snapshot of all three fixtures: **6 contract types, 108 instruments, 213 open orders**. SQL column names use snake case. The JSON files remain unchanged.
+- The seed is a snapshot of all three fixtures: **6 contract types, 108 instruments, 213 open orders**. SQL column names use snake case. All three JSON files in `api/data` are also used by the Prisma seed and data verification, including `instruments.json` and `contract-types.json` whose endpoints read PostgreSQL.
 
 ## JOIN, grouping and constraints
 
@@ -125,9 +125,9 @@ On Linux/macOS, an equivalent invocation is `PGPASSWORD=trading_local npm run te
 
 `verify.sql` checks seed/JOIN counts and **39 expected rejections**: both missing foreign keys, deletion and updates of referenced keys, zero order size, invalid side, negative opening price, infinite opening time, duplicate/zero/negative order IDs, zero and negative contract sizes, empty and whitespace-only instrument symbols, `NaN` and both infinities in every numeric column, and `NULL` in all 11 required columns across the three tables. Each case catches its expected SQLSTATE (`23503`, `23001`, `23514`, `23505`, or `23502`); a different error fails the command. Expected rejections print `PASS` notices. Unexpected acceptance raises an exception and makes the command exit with an error. All constraint checks run in a transaction that is rolled back.
 
-The read-only fixture comparison checks all fields, including swaps and timestamps converted back to Unix milliseconds. Numeric JSON tokens are compared as exact decimal values without rounding through JavaScript `number`. Any difference, SQL error, connection error or missing executable gives a nonzero exit status. These tests use the existing initialized database and never reset or reseed it. Separately, `npm run test:api` requires the seeded Prisma database configured by `DATABASE_URL` and verifies instrument data through the real HTTP endpoint; see [the Prisma guide](../api/prisma/README.md#generate-migrate-and-seed).
+The read-only fixture comparison checks all fields, including swaps and timestamps converted back to Unix milliseconds. Numeric JSON tokens are compared as exact decimal values without rounding through JavaScript `number`. Any difference, SQL error, connection error or missing executable gives a nonzero exit status. These tests use the existing initialized database and never reset or reseed it.
 
-The API suite runs its files serially and includes real TCP handshake failure, unavailable database, and SQL lock/timeout regressions. The exclusive-lock test only accepts a loopback connection to `trading_orders_prisma_dev`, rolls back the blocking transaction in `finally`, and verifies recovery to all 108 instruments. It also checks server-side SQL cancellation after an HTTP abort and bounded application shutdown. Do not run another API suite or seed concurrently. Run `npm run db:verify` afterwards to confirm the original 6/108/213 snapshot and removal of temporary test instruments. `test:db -- --docker` continues to target the historical `trading_orders` database, not the Prisma HTTP test database.
+For API tests, use `npm run test:api` with a migrated and seeded `trading_orders_prisma_dev` database configured by `DATABASE_URL` on a loopback host (`localhost`, `127.0.0.1` or `::1`). The suite checks the HTTP responses, current database reads, numeric contract sizes and database timeouts. It creates temporary records and locks, then cleans them up. Run it without another API test suite or seed running concurrently, and run `npm run db:verify` afterwards to confirm the 6/108/213 snapshot. See [the Prisma guide](../api/prisma/README.md#generate-migrate-and-seed) for setup. `test:db -- --docker` targets the separate `trading_orders` database.
 
 To see the raw foreign key error yourself, execute these statements interactively, then roll back:
 
@@ -141,7 +141,7 @@ ROLLBACK;
 
 ## Windows without Docker
 
-The stage was verified using PostgreSQL 18.6 Windows binaries from the [EDB ZIP distribution linked by PostgreSQL](https://www.postgresql.org/download/windows/). No Windows service is needed. The local runtime and data are in the ignored `tmp/postgresql` directory; they are not committed. Download the ZIP from [EDB](https://www.enterprisedb.com/download-postgresql-binaries) and extract its `pgsql` folder there (the server needs `bin`, `lib`, and `share`).
+PostgreSQL 18.6 can run directly from the Windows binaries in the [EDB ZIP distribution linked by PostgreSQL](https://www.postgresql.org/download/windows/), without a Windows service. Store the runtime and local data in the ignored `tmp/postgresql` directory. Download the ZIP from [EDB](https://www.enterprisedb.com/download-postgresql-binaries) and extract its `pgsql` folder there (the server needs `bin`, `lib`, and `share`).
 
 For a **new** data directory, run from the repository root in PowerShell:
 

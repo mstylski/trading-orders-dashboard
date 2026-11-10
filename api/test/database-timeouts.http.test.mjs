@@ -20,7 +20,6 @@ const fixtures = (name) =>
   JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
 const instruments = fixtures('instruments.json');
 const orders = fixtures('order-data.json');
-const contractTypes = fixtures('contract-types.json');
 
 async function within(promise, milliseconds, label) {
   let timer;
@@ -169,7 +168,7 @@ describe('Database deadlines (real TCP server, real PostgreSQL and real NestJS p
   );
 
   it(
-    'returns only a generic 5xx for an unavailable database and keeps fixture routes working',
+    'returns generic 5xx for both PostgreSQL routes and keeps fixture-backed orders working',
     { timeout: 15000 },
     async () => {
       // Allocate/release a loopback port; never stop or reconfigure the real database.
@@ -181,11 +180,8 @@ describe('Database deadlines (real TCP server, real PostgreSQL and real NestJS p
       );
       try {
         assertDatabaseFailure(await get(api.baseUrl, '/instruments'));
+        assertDatabaseFailure(await get(api.baseUrl, '/contract-types'));
         assert.deepEqual(await get(api.baseUrl, '/orders'), { status: 200, body: orders });
-        assert.deepEqual(await get(api.baseUrl, '/contract-types'), {
-          status: 200,
-          body: contractTypes,
-        });
       } finally {
         await api.close();
       }
@@ -200,6 +196,10 @@ describe('Database deadlines (real TCP server, real PostgreSQL and real NestJS p
       // This test takes an exclusive lock; allow only the documented, local dev DB.
       assert(['localhost', '127.0.0.1', '[::1]'].includes(databaseUrl.hostname));
       assert.equal(databaseUrl.pathname, '/trading_orders_prisma_dev');
+      assert(
+        !['host', 'connectionString'].some((key) => databaseUrl.searchParams.has(key)),
+        'The lock test forbids DATABASE_URL query parameters that override the connection destination.',
+      );
       const applicationName = `instruments_timeout_${randomUUID()}`;
       databaseUrl.searchParams.set('application_name', applicationName);
       const blocker = new pg.Client({
