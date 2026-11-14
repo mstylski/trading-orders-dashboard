@@ -28,14 +28,16 @@ model Instrument {
 }
 
 model Order {
-  id         BigInt     @id
-  symbol     String     @db.Text
-  side       String     @db.Text
-  size       Decimal    @db.Decimal
-  openPrice  Decimal    @map("open_price") @db.Decimal
-  openTime   DateTime   @map("open_time") @db.Timestamptz(6)
-  swap       Decimal    @db.Decimal
-  instrument Instrument @relation(fields: [symbol], references: [symbol], onDelete: Restrict, onUpdate: Restrict, map: "orders_instrument_fk")
+  id           BigInt     @id
+  // Preserve the original dashboard order; new orders sort after the snapshot.
+  displayOrder Int?       @map("display_order")
+  symbol       String     @db.Text
+  side         String     @db.Text
+  size         Decimal    @db.Decimal
+  openPrice    Decimal    @map("open_price") @db.Decimal
+  openTime     DateTime   @map("open_time") @db.Timestamptz(6)
+  swap         Decimal    @db.Decimal
+  instrument   Instrument @relation(fields: [symbol], references: [symbol], onDelete: Restrict, onUpdate: Restrict, map: "orders_instrument_fk")
 
   @@index([symbol], map: "orders_symbol_idx")
   @@map("orders")

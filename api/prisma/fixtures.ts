@@ -49,20 +49,23 @@ export function loadFixtures() {
     symbol: row.symbol,
     contractType: safeInteger(row.contractType),
   }));
-  const orders = fixture<{ data: OrderFixture[] }>('order-data.json').data.map((row) => {
-    const milliseconds = safeInteger(row.openTime);
-    const openTime = new Date(milliseconds);
-    assert.equal(openTime.getTime(), milliseconds, `Invalid openTime for order ${row.id}`);
-    return {
-      id: BigInt(row.id),
-      symbol: row.symbol,
-      side: row.side,
-      size: new Prisma.Decimal(row.size),
-      openPrice: new Prisma.Decimal(row.openPrice),
-      openTime,
-      swap: new Prisma.Decimal(row.swap),
-    };
-  });
+  const orders = fixture<{ data: OrderFixture[] }>('order-data.json').data.map(
+    (row, displayOrder) => {
+      const milliseconds = safeInteger(row.openTime);
+      const openTime = new Date(milliseconds);
+      assert.equal(openTime.getTime(), milliseconds, `Invalid openTime for order ${row.id}`);
+      return {
+        id: BigInt(row.id),
+        displayOrder,
+        symbol: row.symbol,
+        side: row.side,
+        size: new Prisma.Decimal(row.size),
+        openPrice: new Prisma.Decimal(row.openPrice),
+        openTime,
+        swap: new Prisma.Decimal(row.swap),
+      };
+    },
+  );
 
   // Validate the snapshot before the seed starts replacing any database rows.
   assert.deepEqual([contracts.length, instruments.length, orders.length], [6, 108, 213]);

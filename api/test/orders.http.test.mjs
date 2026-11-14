@@ -9,6 +9,7 @@ import { after, before, describe, it } from 'node:test';
 import { NestFactory } from '@nestjs/core';
 import { createPrismaClient } from '../../dist/api/prisma/client.js';
 import { AppModule } from '../../dist/api/src/app.module.js';
+import { assertLocalDevelopmentDatabase } from './support/database-safety.mjs';
 
 function fixture(name) {
   return JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
@@ -18,25 +19,6 @@ const orders = fixture('order-data.json');
 const instruments = fixture('instruments.json');
 const contractTypes = fixture('contract-types.json');
 
-function assertLocalDevelopmentDatabase() {
-  const message =
-    'HTTP integration tests require DATABASE_URL to use PostgreSQL on localhost, 127.0.0.1 or ::1 with database trading_orders_prisma_dev and no connection query overrides; refusing to start the API or modify data.';
-  let databaseUrl;
-  try {
-    databaseUrl = new URL(process.env['DATABASE_URL'] ?? '');
-  } catch {
-    assert.fail(message);
-  }
-  assert(
-    ['postgres:', 'postgresql:'].includes(databaseUrl.protocol) &&
-      ['localhost', '127.0.0.1', '[::1]'].includes(databaseUrl.hostname) &&
-      // node-postgres query parameters can override the connection destination.
-      !['host', 'connectionString'].some((key) => databaseUrl.searchParams.has(key)) &&
-      databaseUrl.pathname === '/trading_orders_prisma_dev',
-    message,
-  );
-}
-
 describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directory: dist/api)', () => {
   let app;
   let baseUrl;
@@ -44,7 +26,7 @@ describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directo
 
   before(
     async () => {
-      assertLocalDevelopmentDatabase();
+      assertLocalDevelopmentDatabase(process.env['DATABASE_URL']);
       // Starting outside the project root guards against paths based on process.cwd().
       process.chdir(fileURLToPath(new URL('../../dist/api/', import.meta.url)));
       app = await NestFactory.create(AppModule, { logger: false, abortOnError: false });
@@ -102,6 +84,118 @@ describe('NestJS HTTP contract (compiled API, seeded PostgreSQL, working directo
       assert.deepEqual(await get('/orders?status=open'), orders);
     });
   }
+
+  async function withTemporaryOrder(overrides, check) {
+    const prisma = createPrismaClient();
+    const row = {
+      id: BigInt(randomInt(1_000_000_000, 2_000_000_000)),
+      symbol: 'BTCUSD',
+      side: 'SELL',
+      size: '0.125',
+      openPrice: '12345.67890123',
+      openTime: '2026-11-10T12:34:56.789+02:00',
+      swap: '-0.00000001',
+      ...overrides,
+    };
+    let created = false;
+    try {
+      // Use SQL so NUMERIC and TIMESTAMPTZ values never pass through Number/Date
+      // before PostgreSQL stores them, including the precision regression cases.
+      await prisma.$executeRaw`
+        INSERT INTO orders (id, symbol, side, size, open_price, open_time, swap)
+        VALUES (${row.id}, ${row.symbol}, ${row.side}, ${row.size}::numeric,
+                ${row.openPrice}::numeric, ${row.openTime}::timestamptz, ${row.swap}::numeric)
+      `;
+      created = true;
+      await check(row, prisma);
+    } finally {
+      try {
+        if (created) await prisma.order.delete({ where: { id: row.id } });
+        assert.equal(await prisma.order.count(), 213, 'Temporary order must be removed');
+      } finally {
+        await prisma.$disconnect();
+      }
+    }
+    assert.deepEqual(await get('/orders'), orders);
+  }
+
+  it('GET /orders reads a direct SQL insert with exact BigInt, Decimal and timezone values', async () => {
+    await withTemporaryOrder({ id: BigInt(Number.MAX_SAFE_INTEGER) }, async (row, prisma) => {
+      const expected = {
+        id: Number.MAX_SAFE_INTEGER,
+        symbol: row.symbol,
+        side: row.side,
+        size: 0.125,
+        openPrice: 12345.67890123,
+        openTime: Date.parse('2026-11-10T10:34:56.789Z'),
+        swap: -0.00000001,
+      };
+      for (const query of ['', '?status=open', '?status=OPEN']) {
+        const body = await get(`/orders${query}`);
+        assert.equal(body.data.length, 214);
+        // Unranked database rows follow the original complete snapshot. The
+        // internal ordering column and status must never leak into the JSON.
+        assert.deepEqual(body, { data: [...orders.data, expected] });
+      }
+      assert.deepEqual(await get('/orders?status=closed'), { data: [] });
+      assert.deepEqual(await get('/instruments'), instruments);
+      assert.deepEqual(await get('/contract-types'), contractTypes);
+
+      await prisma.$executeRaw`UPDATE orders SET swap = 0 WHERE id = ${row.id}`;
+      assert.deepEqual(await get('/orders'), {
+        data: [...orders.data, { ...expected, swap: 0 }],
+      });
+    });
+  });
+
+  for (const id of [9007199254740992n, 9007199254740993n]) {
+    it(`GET /orders rejects BigInt ${id} outside the safe JavaScript integer range`, async () => {
+      await withTemporaryOrder({ id }, async () => {
+        assert.deepEqual(await get('/orders', 500), {
+          statusCode: 500,
+          message: 'Internal server error',
+        });
+      });
+    });
+  }
+
+  for (const field of ['size', 'openPrice', 'swap']) {
+    for (const [value, reason] of [
+      ['1e400', 'overflows to Infinity'],
+      ['1e-400', 'underflows to zero'],
+      ['9007199254740993', 'loses integer precision'],
+      ['0.123456789012345678901', 'loses fractional precision'],
+    ]) {
+      it(`GET /orders rejects ${field} that ${reason}`, async () => {
+        await withTemporaryOrder({ [field]: value }, async () => {
+          assert.deepEqual(await get('/orders', 500), {
+            statusCode: 500,
+            message: 'Internal server error',
+          });
+          assert.deepEqual(await get('/orders?status=closed'), { data: [] });
+        });
+      });
+    }
+  }
+
+  it('GET /orders rejects negative swap precision loss', async () => {
+    await withTemporaryOrder({ swap: '-9007199254740993' }, async () => {
+      assert.deepEqual(await get('/orders', 500), {
+        statusCode: 500,
+        message: 'Internal server error',
+      });
+    });
+  });
+
+  it('GET /orders rejects microseconds that Prisma Date would silently truncate', async () => {
+    await withTemporaryOrder({ openTime: '2026-11-10T12:34:56.789123+02:00' }, async () => {
+      assert.deepEqual(await get('/orders', 500), {
+        statusCode: 500,
+        message: 'Internal server error',
+      });
+      assert.deepEqual(await get('/orders?status=closed'), { data: [] });
+    });
+  });
 
   it('GET /instruments returns all 108 seeded instruments in the original JSON format', async () => {
     const body = await get('/instruments');

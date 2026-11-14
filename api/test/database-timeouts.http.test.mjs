@@ -11,6 +11,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { describe, it } from 'node:test';
 import pg from 'pg';
 import { DATABASE_TIMEOUTS } from '../../dist/api/prisma/client.js';
+import { assertLocalDevelopmentDatabase } from './support/database-safety.mjs';
 
 const { connectionTimeoutMillis, statement_timeout: statementTimeout } = DATABASE_TIMEOUTS;
 // CI scheduling/HTTP overhead is separate from the configured database deadlines.
@@ -19,7 +20,6 @@ const requestDeadline = connectionTimeoutMillis + statementTimeout + margin;
 const fixtures = (name) =>
   JSON.parse(readFileSync(new URL(`../data/${name}`, import.meta.url), 'utf8'));
 const instruments = fixtures('instruments.json');
-const orders = fixtures('order-data.json');
 
 async function within(promise, milliseconds, label) {
   let timer;
@@ -168,7 +168,7 @@ describe('Database deadlines (real TCP server, real PostgreSQL and real NestJS p
   );
 
   it(
-    'returns generic 5xx for both PostgreSQL routes and keeps fixture-backed orders working',
+    'returns generic 5xx for all three PostgreSQL routes and validates status without a database',
     { timeout: 15000 },
     async () => {
       // Allocate/release a loopback port; never stop or reconfigure the real database.
@@ -181,7 +181,20 @@ describe('Database deadlines (real TCP server, real PostgreSQL and real NestJS p
       try {
         assertDatabaseFailure(await get(api.baseUrl, '/instruments'));
         assertDatabaseFailure(await get(api.baseUrl, '/contract-types'));
-        assert.deepEqual(await get(api.baseUrl, '/orders'), { status: 200, body: orders });
+        assertDatabaseFailure(await get(api.baseUrl, '/orders'));
+        assertDatabaseFailure(await get(api.baseUrl, '/orders?status=open'));
+        assert.deepEqual(await get(api.baseUrl, '/orders?status=closed'), {
+          status: 200,
+          body: { data: [] },
+        });
+        assert.deepEqual(await get(api.baseUrl, '/orders?status=invalid'), {
+          status: 400,
+          body: {
+            statusCode: 400,
+            message: 'status must be open or closed',
+            error: 'Bad Request',
+          },
+        });
       } finally {
         await api.close();
       }
@@ -192,14 +205,8 @@ describe('Database deadlines (real TCP server, real PostgreSQL and real NestJS p
     'PostgreSQL cancels a lock-blocked SELECT, also after HTTP abort, then returns all 108 instruments',
     { timeout: 25000 },
     async () => {
-      const databaseUrl = new URL(process.env['DATABASE_URL']);
       // This test takes an exclusive lock; allow only the documented, local dev DB.
-      assert(['localhost', '127.0.0.1', '[::1]'].includes(databaseUrl.hostname));
-      assert.equal(databaseUrl.pathname, '/trading_orders_prisma_dev');
-      assert(
-        !['host', 'connectionString'].some((key) => databaseUrl.searchParams.has(key)),
-        'The lock test forbids DATABASE_URL query parameters that override the connection destination.',
-      );
+      const databaseUrl = assertLocalDevelopmentDatabase(process.env['DATABASE_URL']);
       const applicationName = `instruments_timeout_${randomUUID()}`;
       databaseUrl.searchParams.set('application_name', applicationName);
       const blocker = new pg.Client({
