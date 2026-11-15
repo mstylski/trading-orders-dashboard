@@ -9,7 +9,7 @@ module.exports = defineConfig([
     ignores: ['api/prisma/generated/**'],
   },
   {
-    files: ['api/**/*.ts', 'prisma.config.ts'],
+    files: ['api/**/*.ts', 'e2e/**/*.ts', 'prisma.config.ts', 'playwright.config.ts'],
     extends: [eslint.configs.recommended, tseslint.configs.recommended, tseslint.configs.stylistic],
   },
   {

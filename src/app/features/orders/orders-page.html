@@ -18,6 +18,7 @@
       </div>
       <button
         #addButton
+        data-testid="add-order"
         class="button primary add-button"
         type="button"
         [disabled]="store.status() !== 'ready' || !store.symbols().length"
@@ -70,8 +71,12 @@
           <div class="table-toolbar">
             <div class="table-title">
               <h2 class="table-title-heading" id="positions-title">Pozycje</h2>
-              <span class="positions-count">{{ store.orders().length }}</span
-              ><span class="symbols-count">{{ store.groups().length }} symboli</span>
+              <span class="positions-count" data-testid="orders-count">{{
+                store.orders().length
+              }}</span
+              ><span class="symbols-count" data-testid="groups-count"
+                >{{ store.groups().length }} symboli</span
+              >
             </div>
             <div
               class="connection"

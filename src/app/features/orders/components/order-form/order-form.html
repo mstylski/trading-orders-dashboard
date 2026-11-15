@@ -1,4 +1,4 @@
-<section class="form-panel" aria-labelledby="new-order-title">
+<section class="form-panel" aria-labelledby="new-order-title" data-testid="order-form">
   <div class="form-heading">
     <div>
       <h2 id="new-order-title" class="form-title">Nowe zlecenie</h2>
@@ -99,7 +99,14 @@
         {{ unavailableReason() ?? 'Cena zostanie zapisana w momencie dodania zlecenia.' }}
       </p>
       <div class="form-actions">
-        <button class="button secondary" type="button" (click)="cancelled.emit()">Anuluj</button>
+        <button
+          class="button secondary"
+          type="button"
+          data-testid="cancel-order"
+          (click)="cancelled.emit()"
+        >
+          Anuluj
+        </button>
         <button
           class="button primary"
           type="submit"

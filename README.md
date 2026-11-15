@@ -108,7 +108,34 @@ Angular tests use mocked HTTP and WebSocket responses. `test:api` builds the bac
 
 Both the HTTP contract suite (before starting NestJS) and the lock test accept only a PostgreSQL URL with a loopback host (`localhost`, `127.0.0.1` or `::1`) and a database named `trading_orders_prisma_dev`. Their shared guard rejects missing or malformed configuration and connection query overrides, including `?database=...`, before connecting or modifying data, without displaying credentials. Decimal regression cases cover `1e400`, `1e-400` and `9007199254740993`, including HTTP 500 and cleanup. API test files run serially. Do not run a seed or another API test suite concurrently. Tests do not reset, migrate or reseed the database; run `db:verify` before and afterwards to confirm the complete development snapshot.
 
-For a browser check, keep the API on port 3000 and start the production SSR server on port 4000. With the seeded data, confirm 213 orders and 108 groups, open the add-order form, and check live quotes and profit updates. DevTools Console should have no hydration or unhandled application errors. During initial hydration, Network should show no repeated browser GETs to `/orders`, `/instruments` or `/contract-types`: Angular uses the responses embedded in the SSR transfer cache.
+### Playwright E2E: SSR and hydration
+
+Install the Chromium browser once after `npm ci`:
+
+```bash
+npx playwright install chromium
+```
+
+Start the existing PostgreSQL instance and set `DATABASE_URL` in the ignored `.env` to the already migrated and seeded Prisma database. Ports 3000 and 4000 must be free: the suite first runs `db:verify` to check database access and the seed, builds the backend and production dashboard, starts its own real NestJS and Angular SSR servers, and stops those servers afterwards. It does not reuse an existing API or dashboard process.
+
+Run twice against the same seed, without reseeding between runs:
+
+```bash
+npm run lint:e2e
+npm run db:verify
+npm run test:e2e
+npm run db:verify
+npm run test:e2e
+npm run db:verify
+```
+
+Each E2E run also executes the full `db:verify` fixture comparison **before and after** the tests, including after a failed browser assertion. It checks **6 contract types, 108 instruments, 213 orders**, all persisted values, exact decimals, timestamps and relations; a failed comparison fails the suite. Neither E2E nor these verification steps seed, migrate, insert, update or delete records. Avoid concurrent seed/API test runs while verifying the snapshot.
+
+A separate API test uses Playwright's `request` fixture to check HTTP 200 and record counts for `/orders` (213), `/instruments` (108) and `/contract-types` (6). These requests run outside the browser context and are not counted as hydration duplicates.
+
+The browser test checks HTTP 200, the visible counters (213 orders and 108 groups), 108 rendered group rows and the BTCUSD group in the original SSR response body. It then opens the deferred order form and cancels it, checks focus restoration, expands BTCUSD and verifies that order 1203384 is visible with unchanged counters. Request observation starts before navigation and fails if the browser sends any GET to `/orders`, `/instruments` or `/contract-types` instead of using Transfer Cache, or sends a write request. Hydration errors in console errors/warnings and uncaught browser errors fail the test. Selectors use `data-testid` and accessible roles; live WebSocket prices and connectivity do not determine the result, and no endpoints are mocked.
+
+View the HTML report with `npx playwright show-report`. Failure traces and screenshots are saved in the ignored `test-results/`; the HTML report is in the ignored `playwright-report/`. Check E2E TypeScript and lint rules with `npm run lint:e2e`. For browser-test iterations after a successful build, `npx playwright test` skips rebuilding; `npm run test:e2e` always rebuilds both applications.
 
 Database tests require a separately started and initialized PostgreSQL server: `npm run test:db -- --docker` uses Compose, while `npm run test:db` uses `psql` from `PATH` (or the `PSQL` executable path) and the `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` connection variables. They run transactional constraint checks and compare all SQL records against the JSON fixtures, including exact decimals and millisecond timestamps. See [database testing instructions](db/README.md#repeatable-database-tests).
 
@@ -116,12 +143,13 @@ To run only the fixture comparison, use `npm run test:db:fixtures -- --docker` f
 
 Routine Prisma database verification uses `db:verify` without seeding. The [Prisma guide](api/prisma/README.md#generate-migrate-and-seed) explains initial setup and the seed's replacement strategy.
 
-`lint` and both formatting commands cover the frontend, API and database test scripts, including API tests and build scripts. `lint:api` checks just the backend; `lint:db` checks the database test scripts. Angular-specific lint rules apply only to `src`.
+`lint` and both formatting commands cover the frontend, API, database and E2E test scripts, including API tests and build scripts. `lint:api` checks just the backend; `lint:db` checks the database test scripts; `lint:e2e` checks the browser tests and their TypeScript types. Angular-specific lint rules apply only to `src`.
 
 ## Structure and data flow
 
 - `api` contains the NestJS HTTP endpoints, JSON fixtures, build scripts, and API tests. `api/src/prisma` provides the shared Prisma dependency through NestJS DI; the orders, instruments and contract-types services read and map their database records. `api/prisma` contains the Prisma client factory, schema, migrations, fixture seed and verification scripts for a separate database.
 - `db` contains the standalone SQL schema, seed, example queries, and database tests; `compose.yaml` configures the PostgreSQL container.
+- `e2e` contains the read-only Playwright SSR/hydration integration test; `playwright.config.ts` starts the real API and production SSR server.
 - `src/app/features/orders/data` fetches and validates data from three HTTP endpoints and handles the WebSocket connection, symbol subscriptions, and reconnection.
 - `src/app/features/orders/state` stores orders and exposes signals and operations for adding and closing them. The store is scoped to the page and releases the connection when the page is destroyed.
 - `src/app/features/orders/domain` contains pure calculations for contract values, profits, and groups.
@@ -141,9 +169,3 @@ The server renders the dashboard and loads its initial orders, instruments, and 
 After the HTTP data loads, the store builds the order groups. Quotes update their profits in real time. Each symbol in the table shows whether its price is current, stale, or still awaited. The WebSocket connection sends a subscription probe every 30 seconds and reconnects if no valid quote or acknowledgement arrives within 10 seconds. If the connection drops, the application marks previously received prices as stale and attempts to reconnect; adding an order requires a fresh price for the selected symbol.
 
 Adding and closing orders changes only the state in browser memory. Refreshing the page fetches the initial data again. Only the theme preference is saved in `localStorage`.
-
-## Sharing a source ZIP
-
-On Windows, create a source archive with `npm run package:source`. The script packages the current source files, including uncommitted additions, into an ignored `tmp/trading-orders-source-*.zip` and validates the ZIP entries. It uses an explicit source allowlist and excludes `.env` files (except the root `.env.example`), common credential/key files, linked files/directories, dependencies, generated Prisma files, `dist/`, `.angular/`, `.idea/` and other local artifacts. Review source contents for any hardcoded secrets before sharing; `.gitignore` alone does not protect a manually created ZIP.
-
-Keep `.env.example` free of credentials. If a password from an earlier archive was shared outside a trusted environment or reused elsewhere, rotate it in PostgreSQL and update the local `.env` and any other affected services.
