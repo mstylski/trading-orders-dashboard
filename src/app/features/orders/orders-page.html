@@ -30,23 +30,77 @@
       </button>
     </div>
     @if (formOpen()) {
-      @defer {
-        <app-order-form
+      @if (store.legacyPending(); as legacy) {
+        <section
           id="new-order-panel"
-          [symbols]="store.symbols()"
-          [price]="store.selectedPrice()"
-          [unavailableReason]="
-            store.unavailablePriceReason()
-              ? priceReasonLabel[store.unavailablePriceReason()!]
-              : null
-          "
-          [submitError]="formError()"
-          (symbolChange)="selectSymbol($event)"
-          (submitted)="addOrder($event)"
-          (cancelled)="closeForm()"
-        />
-      } @placeholder {
-        <p role="status">Ładowanie formularza…</p>
+          class="state-panel legacy-pending"
+          data-testid="legacy-pending"
+          aria-labelledby="legacy-title"
+        >
+          <h2 id="legacy-title" class="state-panel-title">Sprawdź wcześniejsze zlecenie</h2>
+          <p class="state-panel-description">
+            Zachowano niepotwierdzone zlecenie z poprzedniej wersji. Mogło już zostać zapisane.
+            Sprawdź jego wynik przed dodaniem kolejnego.
+          </p>
+          <dl>
+            <dt>Symbol</dt>
+            <dd>{{ legacy.request.symbol }}</dd>
+            <dt>Strona</dt>
+            <dd>{{ legacy.request.side }}</dd>
+            <dt>Wolumen</dt>
+            <dd>{{ legacy.request.size }}</dd>
+            <dt>Cena z pierwszej próby</dt>
+            <dd>{{ legacy.request.openPrice }}</dd>
+            <dt>Czas z pierwszej próby</dt>
+            <dd>{{ legacy.request.openTime | date: 'dd.MM.yyyy HH:mm:ss.SSS' }}</dd>
+          </dl>
+          <p class="state-panel-description">
+            Sprawdzenie odczyta zapisany wynik bez tworzenia nowego zlecenia. Brak wyniku nie usuwa
+            zachowanej operacji.
+          </p>
+          <button
+            class="button secondary"
+            type="button"
+            aria-label="Zamknij formularz"
+            [disabled]="store.saving()"
+            (click)="closeForm()"
+          >
+            Zamknij
+          </button>
+          <button
+            class="button primary"
+            type="button"
+            [disabled]="store.saving()"
+            (click)="resolveLegacyOrder()"
+          >
+            {{ store.saving() ? 'Sprawdzanie…' : 'Sprawdź wynik zlecenia' }}
+          </button>
+          @if (formError()) {
+            <p class="field-error" role="alert">{{ formError() }}</p>
+          }
+        </section>
+      } @else {
+        @defer (when formOpen()) {
+          <app-order-form
+            id="new-order-panel"
+            [symbols]="store.symbols()"
+            [price]="store.selectedPrice()"
+            [unavailableReason]="
+              store.unavailablePriceReason()
+                ? priceReasonLabel[store.unavailablePriceReason()!]
+                : null
+            "
+            [submitError]="formError()"
+            [saving]="store.saving()"
+            [initialOrder]="restoredOrder()"
+            [retryOrder]="store.pendingOrder()"
+            (symbolChange)="selectSymbol($event)"
+            (submitted)="addOrder($event)"
+            (cancelled)="closeForm()"
+          />
+        } @placeholder {
+          <p role="status">Ładowanie formularza…</p>
+        }
       }
     }
     @switch (store.status()) {
@@ -130,8 +184,8 @@
       }
     }
     <footer class="page-footer">
-      <span class="demo-badge">DEMO</span> Zlecenia są zapisane w tej sesji. Odświeżenie przywróci
-      dane początkowe.
+      <span class="demo-badge">DEMO</span> Nowe zlecenia są zapisywane na serwerze. Zamykanie
+      pozycji zmienia widok tylko w tej sesji.
     </footer>
   </main>
 </div>

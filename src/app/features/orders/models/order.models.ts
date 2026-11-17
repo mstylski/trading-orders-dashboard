@@ -58,14 +58,26 @@ export interface OrderGroup {
 }
 
 // State and command results
-export type AddOrderError = 'invalid-input' | 'missing-contract' | 'stale-quote' | 'id-exhausted';
+export type AddOrderError =
+  | 'legacy-pending'
+  | 'operation-not-found'
+  | 'invalid-input'
+  | 'missing-contract'
+  | 'stale-quote'
+  | 'saving'
+  | 'unknown-symbol'
+  | 'idempotency-conflict'
+  | 'save-failed';
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 export interface NewOrder {
   readonly symbol: string;
   readonly side: OrderSide;
   readonly size: number;
-  readonly openTime: number;
+}
+
+export interface CreateOrderRequest extends NewOrder {
+  readonly openPrice: number;
 }
 
 export type AddOrderResult = { readonly order: Order } | { readonly error: AddOrderError };

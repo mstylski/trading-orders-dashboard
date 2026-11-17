@@ -1,6 +1,6 @@
 # Trading Orders Dashboard
 
-An Angular 22.2.1 application with server-side rendering (SSR) for viewing orders grouped by symbol. It shows position profits based on WebSocket quotes, lets you add or close orders locally, and supports light, dark, or system themes.
+An Angular 22.2.1 application with server-side rendering (SSR) for viewing orders grouped by symbol. It shows position profits based on WebSocket quotes, saves new orders through NestJS to PostgreSQL, lets you close orders locally, and supports light, dark, or system themes.
 
 ## Getting started
 
@@ -21,7 +21,7 @@ npm run db:seed
 npm run db:verify
 ```
 
-For an already migrated and seeded database, start PostgreSQL and run `npm run db:verify`; do not rerun the seed just to start the application. The seed replaces all three tables' contents in one transaction.
+For an existing database, apply pending migrations with `npm run db:migrate` before starting the API. Do not rerun the seed just to start the application: it replaces all three tables' contents and removes added orders. `db:verify` compares the exact reference snapshot, so it will report a mismatch after an order has been saved.
 
 Start the local NestJS API and leave it running:
 
@@ -48,13 +48,49 @@ The API listens at `http://localhost:3000/` by default (`API_PORT` changes the p
 
 All three GET endpoints read PostgreSQL through Prisma. The counts below describe the seeded development snapshot; the endpoints return current database records.
 
-| Endpoint              | Data source           | Response                                                             |
-| --------------------- | --------------------- | -------------------------------------------------------------------- |
-| `GET /instruments`    | PostgreSQL via Prisma | 108 `{ symbol, contractType }` records ordered by symbol             |
-| `GET /orders`         | PostgreSQL via Prisma | `{ data }` containing all 213 open orders, without pagination        |
-| `GET /contract-types` | PostgreSQL via Prisma | 6 `{ contractType, contractSize }` records ordered by `contractType` |
+| Endpoint                      | Data source           | Response                                                             |
+| ----------------------------- | --------------------- | -------------------------------------------------------------------- |
+| `GET /instruments`            | PostgreSQL via Prisma | 108 `{ symbol, contractType }` records ordered by symbol             |
+| `GET /orders`                 | PostgreSQL via Prisma | `{ data }` containing all 213 open orders, without pagination        |
+| `POST /orders`                | PostgreSQL via Prisma | HTTP 201 with `{ data: Order }` containing the saved order           |
+| `GET /orders/operations/:key` | Operation registry    | Saved HTTP status and original `{ data: Order }` for a UUID          |
+| `GET /contract-types`         | PostgreSQL via Prisma | 6 `{ contractType, contractSize }` records ordered by `contractType` |
 
-`GET /orders` accepts an optional, case-insensitive `status=open|closed` query parameter. The current model contains open orders only and has no status column, so omitting the parameter or requesting `open` returns all orders, and `closed` returns `{ data: [] }`. Invalid or repeated status values return HTTP 400. Adding or closing orders in the dashboard changes browser memory only.
+`GET /orders` accepts an optional, case-insensitive `status=open|closed` query parameter. The current model contains open orders only and has no status column, so omitting the parameter or requesting `open` returns all orders, and `closed` returns `{ data: [] }`. Invalid or repeated status values return HTTP 400. Closing an order in the dashboard still changes browser memory only.
+
+`POST /orders` requires an `Idempotency-Key` header containing a UUID and accepts exactly these required fields:
+
+```json
+{ "symbol": "BTCUSD", "side": "BUY", "size": 1.5, "openPrice": 67250.25 }
+```
+
+The global NestJS `ValidationPipe` validates the DTO at runtime: `symbol` must be nonblank text, `side` must be `BUY` or `SELL`, and `size` and `openPrice` must be finite numbers greater than zero. Numeric strings are rejected. Extra fields, including `id`, `openTime` and `swap`, return 400 without saving an order. An unknown instrument returns 404. Errors follow NestJS's `{ statusCode, message, error }` format, with a message array for DTO validation and a string for other HTTP errors. Unexpected database failures return the generic 500 described below.
+
+The database generates the ID from a sequence. During creation inside the transaction, the API assigns `openTime` using `new Date()` from the backend clock, with millisecond precision, and sets swap to zero. The response is `{ data: { id, symbol, side, size, openPrice, openTime, swap } }`, using the same checked mapping as GET. Replays return the recorded response, including the original ID and opening time, rather than generating a new timestamp.
+
+The durable operation registry stores the `POST /orders` scope, UUID, SHA-256 hash of the normalized DTO, HTTP status and successful response body. Reserving the key, inserting the order and saving the response happen in one PostgreSQL transaction. A unique constraint on scope and key resolves concurrent submissions. Repeating the same operation returns its original HTTP 201 and body, including the same `order.id`, even after restarting NestJS. Reusing a key with different data returns HTTP 409 with `code: "IDEMPOTENCY_KEY_REUSED"`; a missing or invalid key returns 400. Different keys represent separate operations even when their data matches. There is no automatic expiry. After authentication is introduced, the backend must include the authenticated user in the operation scope.
+
+Angular captures the UUID and a copy of the payload, including the original quoted price, once per operation. It preserves an uncertain operation after a timeout, network error or server failure and stores it in browser-only `sessionStorage` so it can be retried after a reload. A retry uses the same key and exact payload. An explicitly new order receives a new key. The form prevents concurrent submissions, and confirmed responses update the store by `order.id`, avoiding duplicate rows on replay.
+
+The form has no opening-time field. Angular sends only the symbol, side, volume and captured quote; the backend supplies the opening time. The request hash covers exactly these four fields in a fixed order.
+
+Closing or cancelling the form preserves an uncertain operation. Reopening it or reloading the page restores its locked fields and offers **Ponów potwierdzenie**, which sends the original four-field snapshot and UUID without requiring a fresh quote. This also works for small volumes such as `0.0000001`, without rounding. Resolve the pending operation before starting another order; a confirmed operation releases the form for a new UUID.
+
+### Resolving an operation from the previous version
+
+The previous request format included a client-supplied `openTime`. A valid five-field pending snapshot under `trading-orders.pending-order.v1` is retained with its original UUID and full payload. Closing the panel or reloading does not remove it. New orders remain blocked until the earlier operation is resolved; the application does not strip its time, replace its key or change the old registry hash.
+
+Choose **Sprawdź wynik zlecenia** to read `GET /orders/operations/:key`. For a completed operation, this read-only endpoint returns the original stored status (201) and body, including its original `order.id` and `openTime`. It does not insert an order or change the request hash. The page merges the confirmed order by ID and clears the pending snapshot. Invalid UUIDs return 400. A missing result returns 404 and leaves the pending operation intact: absence of a committed registry row does not prove an older request is no longer in flight. Connection failures likewise retain the pending snapshot, allowing another result check.
+
+For manual investigation, copy the UUID shown in the panel and query the same environment's registry using an existing database connection:
+
+```sql
+SELECT scope, key, request_hash, status_code, order_id, response_body
+FROM public.order_creations
+WHERE scope = 'POST /orders' AND key = '<original-uuid>'::uuid;
+```
+
+A completed row identifies the original order and response; use **Sprawdź wynik zlecenia** to confirm it in the browser. If no row is visible, first establish that the original request/transaction has finished and verify its outcome with the operator. Do not submit the old payload to the new POST, remove `openTime` and retry it, or create a replacement under a new UUID while the outcome is uncertain. The current POST contract continues to reject client-supplied `openTime` and `id`; old successful hashes and response bodies remain unchanged.
 
 Contract sizes and order decimal fields are returned as finite JSON numbers, converted from Prisma `Decimal`. Conversion must preserve the original decimal value when the number is serialized back to text. Order IDs are converted from `BigInt` only within JavaScript's safe integer range; opening times are Unix milliseconds. Database failures, overflow, underflow to zero and precision loss return a generic HTTP 500. Database-backed endpoints do not fall back to JSON fixtures. See [Prisma data access](api/prisma/README.md#nestjs-data-access) for exact order mapping and SQL inspection.
 
@@ -76,7 +112,7 @@ The SSR host allowlist in `angular.json` currently includes `localhost` and `127
 
 ## PostgreSQL
 
-The repository includes a PostgreSQL 18.6 setup for SQL practice and Prisma ORM 7 for the backend data model. PostgreSQL is required for `GET /orders`, `GET /instruments`, `GET /contract-types` and the dashboard's initial data load; Docker is optional.
+The repository includes a PostgreSQL 18.6 setup for SQL practice and Prisma ORM 7 for the backend data model. PostgreSQL is required for the HTTP reads, `POST /orders` and the dashboard's initial data load; Docker is optional.
 
 Follow [the Prisma guide](api/prisma/README.md) to create a separate empty `trading_orders_prisma_dev` database, apply the committed migration and explicitly run the repeatable seed. The schema and scripts live in `api/prisma`, with configuration in the root `prisma.config.ts`. Keep `DATABASE_URL` and its password in the ignored `.env`; the example configuration contains no secret. The initial migration must not target the existing manually initialized SQL database.
 
@@ -96,17 +132,18 @@ Compose exposes PostgreSQL at `127.0.0.1:5432`, with database `trading_orders`, 
 
 ```bash
 npm run db:typecheck
+npm run db:test:setup
 npm run format:check
 npm run lint
 npm run test:api
 npm test -- --watch=false
 npm run build
-npm run db:verify
+npm run db:test:verify
 ```
 
-Angular tests use mocked HTTP and WebSocket responses. `test:api` builds the backend and starts NestJS on free local ports. It requires a running, migrated and seeded Prisma database configured by `DATABASE_URL`. The suite checks response formats, ordering, order status validation, Decimal conversion, current PostgreSQL records, database failures and timeouts. It creates temporary records and takes an exclusive table lock to exercise database access, then removes those records and releases the lock.
+Set `TEST_DATABASE_URL` in the ignored `.env` to a separate local `trading_orders_test` database, using URL-encoded credentials as in `DATABASE_URL`. `db:test:setup` creates that database if missing, applies migrations, replaces its snapshot through the seed, and verifies it. The configured user needs permission to connect to the `postgres` maintenance database and `CREATEDB` permission if the test database does not exist. Run setup once or when intentionally resetting test data; it never targets the development database. `db:test:verify` only reads and compares the test snapshot.
 
-Both the HTTP contract suite (before starting NestJS) and the lock test accept only a PostgreSQL URL with a loopback host (`localhost`, `127.0.0.1` or `::1`) and a database named `trading_orders_prisma_dev`. Their shared guard rejects missing or malformed configuration and connection query overrides, including `?database=...`, before connecting or modifying data, without displaying credentials. Decimal regression cases cover `1e400`, `1e-400` and `9007199254740993`, including HTTP 500 and cleanup. API test files run serially. Do not run a seed or another API test suite concurrently. Tests do not reset, migrate or reseed the database; run `db:verify` before and afterwards to confirm the complete development snapshot.
+Angular tests use mocked HTTP and WebSocket responses. `test:api` builds the backend and starts NestJS on free local ports against `TEST_DATABASE_URL`. It checks POST persistence and GET readback, 400 validation, 404 for an unknown symbol, response formats, ordering, Decimal/time conversion, failures and timeouts. Temporary rows are removed in `finally`; the lock test releases its exclusive lock. The shared guard accepts only PostgreSQL on a loopback host (`localhost`, `127.0.0.1` or `::1`) with database `trading_orders_test`, rejecting connection query overrides before connecting without displaying credentials. Tests run serially and do not reset, migrate or reseed data. Avoid concurrent seed, API and E2E suites; run `db:test:verify` before and afterwards to confirm cleanup.
 
 ### Playwright E2E: SSR and hydration
 
@@ -116,24 +153,24 @@ Install the Chromium browser once after `npm ci`:
 npx playwright install chromium
 ```
 
-Start the existing PostgreSQL instance and set `DATABASE_URL` in the ignored `.env` to the already migrated and seeded Prisma database. Ports 3000 and 4000 must be free: the suite first runs `db:verify` to check database access and the seed, builds the backend and production dashboard, starts its own real NestJS and Angular SSR servers, and stops those servers afterwards. It does not reuse an existing API or dashboard process.
+Start PostgreSQL and prepare `TEST_DATABASE_URL` with `npm run db:test:setup`. Ports 3000 and 4000 must be free: the suite first runs `db:test:verify`, builds the backend and production dashboard, starts its own real NestJS and Angular SSR servers using the test database, and stops those servers afterwards. It does not reuse an existing API or dashboard process.
 
 Run twice against the same seed, without reseeding between runs:
 
 ```bash
 npm run lint:e2e
-npm run db:verify
+npm run db:test:verify
 npm run test:e2e
-npm run db:verify
+npm run db:test:verify
 npm run test:e2e
-npm run db:verify
+npm run db:test:verify
 ```
 
-Each E2E run also executes the full `db:verify` fixture comparison **before and after** the tests, including after a failed browser assertion. It checks **6 contract types, 108 instruments, 213 orders**, all persisted values, exact decimals, timestamps and relations; a failed comparison fails the suite. Neither E2E nor these verification steps seed, migrate, insert, update or delete records. Avoid concurrent seed/API test runs while verifying the snapshot.
+Each E2E run executes the full fixture comparison **before and after** the tests, including after a failed browser assertion. It checks **6 contract types, 108 instruments, 213 orders**, all persisted values, exact decimals, timestamps and relations; a failed comparison fails the suite. Tests cover API reads, SSR/hydration, successful order persistence, a real API rejection, a lost response followed by a retry, and concurrent requests sharing a key. HTTP integration tests also verify replay after restarting NestJS, payload conflicts, independent keys and transaction rollback. Write scenarios clean up their own records; the verification hooks remain read only. Tests do not seed or migrate the database.
 
 A separate API test uses Playwright's `request` fixture to check HTTP 200 and record counts for `/orders` (213), `/instruments` (108) and `/contract-types` (6). These requests run outside the browser context and are not counted as hydration duplicates.
 
-The browser test checks HTTP 200, the visible counters (213 orders and 108 groups), 108 rendered group rows and the BTCUSD group in the original SSR response body. It then opens the deferred order form and cancels it, checks focus restoration, expands BTCUSD and verifies that order 1203384 is visible with unchanged counters. Request observation starts before navigation and fails if the browser sends any GET to `/orders`, `/instruments` or `/contract-types` instead of using Transfer Cache, or sends a write request. Hydration errors in console errors/warnings and uncaught browser errors fail the test. Selectors use `data-testid` and accessible roles; live WebSocket prices and connectivity do not determine the result, and no endpoints are mocked.
+The read-only browser scenario checks HTTP 200, the visible counters (213 orders and 108 groups), 108 rendered group rows and the BTCUSD group in the original SSR response body. It opens and cancels the deferred form, checks focus restoration and expands BTCUSD to show order 1203384. Request observation starts before navigation and rejects repeated browser GETs to the three initial endpoints or any writes in that scenario. Hydration errors and uncaught browser errors fail the test. The save scenarios use deterministic browser quotes and real POST requests to check success, persistence after reload and an error without a fictitious local order.
 
 View the HTML report with `npx playwright show-report`. Failure traces and screenshots are saved in the ignored `test-results/`; the HTML report is in the ignored `playwright-report/`. Check E2E TypeScript and lint rules with `npm run lint:e2e`. For browser-test iterations after a successful build, `npx playwright test` skips rebuilding; `npm run test:e2e` always rebuilds both applications.
 
@@ -149,8 +186,8 @@ Routine Prisma database verification uses `db:verify` without seeding. The [Pris
 
 - `api` contains the NestJS HTTP endpoints, JSON fixtures, build scripts, and API tests. `api/src/prisma` provides the shared Prisma dependency through NestJS DI; the orders, instruments and contract-types services read and map their database records. `api/prisma` contains the Prisma client factory, schema, migrations, fixture seed and verification scripts for a separate database.
 - `db` contains the standalone SQL schema, seed, example queries, and database tests; `compose.yaml` configures the PostgreSQL container.
-- `e2e` contains the read-only Playwright SSR/hydration integration test; `playwright.config.ts` starts the real API and production SSR server.
-- `src/app/features/orders/data` fetches and validates data from three HTTP endpoints and handles the WebSocket connection, symbol subscriptions, and reconnection.
+- `e2e` contains Playwright SSR/hydration and order-save integration tests; `playwright.config.ts` starts the real API and production SSR server against the dedicated test database.
+- `src/app/features/orders/data` fetches and validates data from three GET endpoints, saves orders through POST, and handles the WebSocket connection, symbol subscriptions, and reconnection.
 - `src/app/features/orders/state` stores orders and exposes signals and operations for adding and closing them. The store is scoped to the page and releases the connection when the page is destroyed.
 - `src/app/features/orders/domain` contains pure calculations for contract values, profits, and groups.
 - `src/app/features/orders/components` contains the form and table; `orders-page` connects them to the state.
@@ -168,4 +205,4 @@ The server renders the dashboard and loads its initial orders, instruments, and 
 
 After the HTTP data loads, the store builds the order groups. Quotes update their profits in real time. Each symbol in the table shows whether its price is current, stale, or still awaited. The WebSocket connection sends a subscription probe every 30 seconds and reconnects if no valid quote or acknowledgement arrives within 10 seconds. If the connection drops, the application marks previously received prices as stale and attempts to reconnect; adding an order requires a fresh price for the selected symbol.
 
-Adding and closing orders changes only the state in browser memory. Refreshing the page fetches the initial data again. Only the theme preference is saved in `localStorage`.
+Adding an order waits for API confirmation before changing the view; refreshing the page loads the saved order from PostgreSQL. Closing orders changes only browser memory, so those orders reappear after a refresh. Only the theme preference is saved in `localStorage`.

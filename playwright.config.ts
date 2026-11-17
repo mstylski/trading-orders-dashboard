@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { testDatabaseUrl } from './e2e/test-database';
+
+const databaseUrl = testDatabaseUrl();
 
 export default defineConfig({
   testDir: './e2e',
@@ -20,7 +23,7 @@ export default defineConfig({
       name: 'NestJS',
       command: 'node dist/api/main.js',
       url: 'http://localhost:3000/contract-types',
-      env: { API_PORT: '3000' },
+      env: { API_PORT: '3000', DATABASE_URL: databaseUrl },
       reuseExistingServer: false,
       timeout: 30_000,
     },

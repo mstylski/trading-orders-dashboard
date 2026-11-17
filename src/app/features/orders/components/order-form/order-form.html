@@ -1,19 +1,28 @@
 <section class="form-panel" aria-labelledby="new-order-title" data-testid="order-form">
   <div class="form-heading">
     <div>
-      <h2 id="new-order-title" class="form-title">Nowe zlecenie</h2>
-      <p class="form-text">Wybierz instrument i określ parametry zlecenia.</p>
+      <h2 id="new-order-title" class="form-title">
+        {{ retrying() ? 'Potwierdzenie zlecenia' : 'Nowe zlecenie' }}
+      </h2>
+      <p class="form-text">
+        {{
+          retrying()
+            ? 'Zlecenie mogło już zostać zapisane. Potwierdź jego wynik przed dodaniem kolejnego.'
+            : 'Wybierz instrument i określ parametry zlecenia.'
+        }}
+      </p>
     </div>
     <button
       class="icon-button"
       type="button"
       aria-label="Zamknij formularz"
+      [disabled]="saving()"
       (click)="cancelled.emit()"
     >
       ×
     </button>
   </div>
-  <form [formRoot]="form">
+  <form [formRoot]="form" [attr.aria-busy]="saving()" novalidate>
     <div class="fields">
       <div class="field">
         <label class="field-label" for="order-symbol">Symbol</label>
@@ -71,55 +80,51 @@
           class="field-control field-control--readonly"
           id="order-price"
           readonly
-          [value]="price() === null ? '—' : (price() | number: '1.0-8')"
+          [value]="displayedPrice() === null ? '—' : (displayedPrice() | number: '1.0-8')"
           aria-describedby="quote-help"
         />
-        <span class="field-hint">Aktualizowana automatycznie</span>
-      </div>
-      <div class="field">
-        <label class="field-label" for="order-time">Czas otwarcia</label>
-        <input
-          class="field-control"
-          id="order-time"
-          type="datetime-local"
-          step="1"
-          [formField]="form.openTime"
-          [attr.aria-invalid]="form.openTime().touched() && form.openTime().invalid()"
-          aria-describedby="time-error"
-        />
-        <span id="time-error" class="field-error">
-          @if (form.openTime().touched()) {
-            {{ form.openTime().errors()[0]?.message }}
-          }
-        </span>
+        <span class="field-hint">{{
+          retrying() ? 'Cena z pierwszej próby' : 'Aktualizowana automatycznie'
+        }}</span>
       </div>
     </div>
     <div class="form-footer">
       <p id="quote-help" class="form-text quote-help" aria-live="polite">
-        {{ unavailableReason() ?? 'Cena zostanie zapisana w momencie dodania zlecenia.' }}
+        {{
+          retrying()
+            ? 'Ponowienie użyje danych i ceny z pierwszej próby.'
+            : (unavailableReason() ?? 'Cena z chwili wysłania zostanie zapisana.')
+        }}
       </p>
       <div class="form-actions">
         <button
           class="button secondary"
           type="button"
           data-testid="cancel-order"
+          [disabled]="saving()"
           (click)="cancelled.emit()"
         >
           Anuluj
         </button>
-        <button
-          class="button primary"
-          type="submit"
-          [disabled]="
-            form().invalid() ||
-            form().submitting() ||
-            unavailableReason() !== null ||
-            price() === null ||
-            price()! <= 0
-          "
-        >
-          Dodaj zlecenie
-        </button>
+        @if (retrying()) {
+          <button
+            class="button primary"
+            type="button"
+            data-testid="retry-order"
+            [disabled]="saving()"
+            (click)="retry()"
+          >
+            {{ saving() ? 'Zapisywanie…' : 'Ponów potwierdzenie' }}
+          </button>
+        } @else {
+          <button
+            class="button primary"
+            type="submit"
+            [disabled]="form().invalid() || form().submitting() || saving() || quoteUnavailable()"
+          >
+            {{ saving() ? 'Zapisywanie…' : 'Dodaj zlecenie' }}
+          </button>
+        }
       </div>
     </div>
     @if (submitError()) {

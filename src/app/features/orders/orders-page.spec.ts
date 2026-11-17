@@ -5,6 +5,7 @@ import { appConfig } from '../../app.config';
 import { ordersDataConfig } from './data/orders-data.config';
 import { FakeSocket, testData } from './testing/fixtures';
 import { QUOTE_SOCKET_FACTORY } from './data/quote-socket';
+import { PENDING_ORDER_STORAGE_KEY } from './state/orders.store';
 
 describe('Dashboard integration', () => {
   let fixture: ComponentFixture<OrdersPage>;
@@ -12,6 +13,7 @@ describe('Dashboard integration', () => {
   let http: HttpTestingController;
   let socket: FakeSocket;
   beforeEach(() => {
+    sessionStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
     socket = new FakeSocket();
     TestBed.configureTestingModule({
       imports: [OrdersPage],
@@ -28,6 +30,7 @@ describe('Dashboard integration', () => {
   });
   afterEach(() => {
     http.verify();
+    sessionStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
   });
 
   async function load(): Promise<void> {
@@ -64,6 +67,53 @@ describe('Dashboard integration', () => {
     await blocks[0].render(DeferBlockState.Complete);
     await fixture.whenStable();
   }
+
+  it('preserves an older operation through closing and recreation, then confirms its original result', async () => {
+    await load();
+    fixture.destroy();
+    const key = '28d0f7ed-7330-44c4-8b0e-83c29a43e3c2';
+    const request = {
+      symbol: 'BTCUSD',
+      side: 'BUY',
+      size: 0.0000001,
+      openPrice: 111,
+      openTime: 1750444222123,
+    };
+    const stored = JSON.stringify({ key, request });
+    sessionStorage.setItem(PENDING_ORDER_STORAGE_KEY, stored);
+    async function recreate(): Promise<void> {
+      socket = new FakeSocket();
+      fixture = TestBed.createComponent(OrdersPage);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await load();
+    }
+    await recreate();
+    expect(element.querySelector('[data-testid=legacy-pending]')?.textContent).toContain(key);
+    expect(element.querySelector('app-order-form')).toBeNull();
+    await click('[aria-label="Zamknij formularz"]');
+    expect(sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY)).toBe(stored);
+    await click('[data-testid=add-order]');
+    expect(element.querySelector('[data-testid=legacy-pending]')).not.toBeNull();
+    expect(element.querySelector('app-order-form')).toBeNull();
+    fixture.destroy();
+    await recreate();
+    expect(sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY)).toBe(stored);
+    await click('[data-testid=legacy-pending] .button.primary');
+    const lookup = http.expectOne({
+      method: 'GET',
+      url: `${ordersDataConfig.apiBaseUrl}/orders/operations/${key}`,
+    });
+    lookup.flush({ data: { ...request, id: 91, swap: 0 } }, { status: 201, statusText: 'Created' });
+    await fixture.whenStable();
+    expect(element.querySelector('[data-testid=legacy-pending]')).toBeNull();
+    expect(sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY)).toBeNull();
+    expect(element.querySelector('[data-testid=orders-count]')?.textContent).toBe('4');
+    expect(element.querySelector('.notification p')?.textContent).toBe(
+      'Potwierdzono zlecenie nr 91',
+    );
+    http.expectNone((httpRequest) => httpRequest.method === 'POST');
+  });
 
   it('shows loading, then collapsed groups and preserves multiple expanded groups across ticks', async () => {
     expect(element.textContent).toContain('Ładowanie zleceń');
@@ -157,11 +207,44 @@ describe('Dashboard integration', () => {
     expect(element.querySelectorAll('#order-symbol option')).toHaveLength(3);
     await fill('#order-symbol', 'BTCUSD');
     await fill('#order-size', '0.05');
+    expect(element.querySelector('#order-time')).toBeNull();
     expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(true);
     socket.quote('BTCUSD', 115);
     await fixture.whenStable();
     expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
-    await click('button[type=submit]');
+    element.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+    fixture.detectChanges();
+    expect(element.querySelector('app-order-form')).not.toBeNull();
+    expect(element.querySelectorAll('.order-row')).toHaveLength(0);
+    expect(element.querySelector<HTMLButtonElement>('[data-testid=retry-order]')!.disabled).toBe(
+      true,
+    );
+    const request = http.expectOne({
+      method: 'POST',
+      url: `${ordersDataConfig.apiBaseUrl}/orders`,
+    });
+    expect(request.request.body).toEqual({
+      symbol: 'BTCUSD',
+      side: 'BUY',
+      size: 0.05,
+      openPrice: 115,
+    });
+    expect(request.request.body).not.toHaveProperty('openTime');
+    request.flush(
+      {
+        data: {
+          symbol: 'BTCUSD',
+          side: 'BUY',
+          size: 0.05,
+          openPrice: 115,
+          id: 21,
+          openTime: 1750444222000,
+          swap: 0,
+        },
+      },
+      { status: 201, statusText: 'Created' },
+    );
+    await fixture.whenStable();
     expect(element.querySelector('app-order-form')).toBeNull();
     expect(element.querySelector('.group-toggle')?.getAttribute('aria-expanded')).toBe('true');
     expect(element.querySelectorAll('.order-row')).toHaveLength(1);
@@ -169,6 +252,123 @@ describe('Dashboard integration', () => {
     expect(element.querySelector('.order-row')?.textContent).toContain('115');
     expect(element.textContent).toContain('Dodano zlecenie nr 21');
   });
+
+  it('keeps the form and existing rows after a rejected write, then permits retry', async () => {
+    await load();
+    await openForm();
+    await fill('#order-symbol', 'BTCUSD');
+    await fill('#order-size', '0.05');
+    element.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+    fixture.detectChanges();
+    http
+      .expectOne({ method: 'POST', url: `${ordersDataConfig.apiBaseUrl}/orders` })
+      .flush({ message: 'Unknown instrument' }, { status: 404, statusText: 'Not Found' });
+    await fixture.whenStable();
+    expect(element.querySelector('app-order-form')).not.toBeNull();
+    expect(element.querySelector('app-order-form [role=alert]')?.textContent).toContain(
+      'instrument nie istnieje',
+    );
+    expect(element.querySelector('[data-testid=orders-count]')?.textContent).toBe('3');
+    expect(element.textContent).not.toContain('Dodano zlecenie');
+    expect(element.querySelector<HTMLButtonElement>('button[type=submit]')!.disabled).toBe(false);
+  });
+
+  it.each(['[data-testid=cancel-order]', '[aria-label="Zamknij formularz"]'])(
+    'keeps an uncertain attempt after closing with %s and reopens its exact snapshot',
+    async (closeSelector) => {
+      await load();
+      await openForm();
+      await fill('#order-symbol', 'BTCUSD');
+      await fill('#order-size', '0.05');
+      element.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
+      fixture.detectChanges();
+      const request = http.expectOne({
+        method: 'POST',
+        url: `${ordersDataConfig.apiBaseUrl}/orders`,
+      });
+      const originalKey = request.request.headers.get('Idempotency-Key');
+      const originalBody = request.request.body;
+      request.error(new ProgressEvent('error'));
+      await fixture.whenStable();
+      const pending = sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY);
+      expect(pending).not.toBeNull();
+      await click(closeSelector);
+      expect(element.querySelector('app-order-form')).toBeNull();
+      expect(sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY)).toBe(pending);
+      await openForm();
+      expect(element.querySelector<HTMLInputElement>('#order-size')?.value).toBe('0,05');
+      expect(element.querySelector<HTMLInputElement>('#order-size')?.disabled).toBe(true);
+      expect(element.querySelector<HTMLSelectElement>('#order-symbol')?.disabled).toBe(true);
+      socket.quote('BTCUSD', 999);
+      socket.fail();
+      await fixture.whenStable();
+      await click('[data-testid=retry-order]');
+      const retry = http.expectOne({
+        method: 'POST',
+        url: `${ordersDataConfig.apiBaseUrl}/orders`,
+      });
+      expect(retry.request.headers.get('Idempotency-Key')).toBe(originalKey);
+      expect(retry.request.body).toEqual(originalBody);
+      retry.flush(
+        { data: { ...originalBody, id: 91, openTime: 1750444222000, swap: 0 } },
+        { status: 201, statusText: 'Created' },
+      );
+      await fixture.whenStable();
+      expect(element.querySelectorAll('.order-id')).toHaveLength(3);
+      expect(element.querySelector('[data-testid=orders-count]')?.textContent).toBe('4');
+      expect(sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY)).toBeNull();
+      expect(element.querySelector('app-order-form')).toBeNull();
+    },
+  );
+  it.each([0.0000001, 0.125, 1e21])(
+    'automatically reopens a persisted volume %s after browser rendering',
+    async (size) => {
+      await load();
+      fixture.destroy();
+      const request = {
+        symbol: 'BTCUSD',
+        side: 'SELL',
+        size,
+        openPrice: 67250.25,
+      };
+      sessionStorage.setItem(
+        PENDING_ORDER_STORAGE_KEY,
+        JSON.stringify({
+          key: '28d0f7ed-7330-44c4-8b0e-83c29a43e3c2',
+          request,
+        }),
+      );
+      socket = new FakeSocket();
+      fixture = TestBed.createComponent(OrdersPage);
+      element = fixture.nativeElement as HTMLElement;
+      fixture.detectChanges();
+      await load();
+      const blocks = await fixture.getDeferBlocks();
+      expect(blocks).toHaveLength(1);
+      await blocks[0].render(DeferBlockState.Complete);
+      await fixture.whenStable();
+      expect(element.querySelector('.add-button')?.getAttribute('aria-expanded')).toBe('true');
+      expect(element.querySelector<HTMLInputElement>('#order-size')?.disabled).toBe(true);
+      expect(element.querySelector('#order-time')).toBeNull();
+      socket.fail();
+      await fixture.whenStable();
+      await click('[data-testid=retry-order]');
+      const retry = http.expectOne({
+        method: 'POST',
+        url: `${ordersDataConfig.apiBaseUrl}/orders`,
+      });
+      expect(retry.request.body).toEqual(request);
+      expect(retry.request.headers.get('Idempotency-Key')).toBe(
+        '28d0f7ed-7330-44c4-8b0e-83c29a43e3c2',
+      );
+      retry.flush(
+        { data: { ...request, id: 91, openTime: 1750444222000, swap: 0 } },
+        { status: 201, statusText: 'Created' },
+      );
+      await fixture.whenStable();
+      expect(element.querySelector('app-order-form')).toBeNull();
+    },
+  );
 
   it('shows a recoverable HTTP error and successfully retries', async () => {
     const requests = http.match(() => true);

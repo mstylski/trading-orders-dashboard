@@ -24,6 +24,11 @@ async function main() {
       },
     });
     assert.deepEqual([contracts.length, instruments.length, orders.length], [6, 108, 213]);
+    assert.equal(
+      await prisma.orderCreation.count(),
+      0,
+      'The reference snapshot must not contain pending or completed order creation operations',
+    );
 
     for (const row of expected.contracts) {
       const actual = contracts.find((item) => item.contractType === row.contractType);

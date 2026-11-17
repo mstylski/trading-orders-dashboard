@@ -7,6 +7,7 @@ import { testData } from '../testing/fixtures';
 import { OrdersData } from '../models/order.models';
 
 describe('OrdersApiService', () => {
+  const idempotencyKey = '28d0f7ed-7330-44c4-8b0e-83c29a43e3c2';
   let api: OrdersApiService;
   let http: HttpTestingController;
   beforeEach(() => {
@@ -38,6 +39,41 @@ describe('OrdersApiService', () => {
     expect(http.match(() => false)).toEqual([]);
     flush();
     expect(result).toEqual(testData);
+  });
+
+  it('posts only the creation contract and unwraps a confirmed order', () => {
+    const input = {
+      symbol: 'BTCUSD',
+      side: 'BUY' as const,
+      size: 1.5,
+      openPrice: 67250.25,
+    };
+    const next = vi.fn();
+    api.create(input, idempotencyKey).subscribe(next);
+    const request = http.expectOne({
+      method: 'POST',
+      url: `${ordersDataConfig.apiBaseUrl}/orders`,
+    });
+    expect(request.request.body).toEqual(input);
+    expect(request.request.headers.get('Idempotency-Key')).toBe(idempotencyKey);
+    expect(next).not.toHaveBeenCalled();
+    request.flush({ data: testData.orders[0] }, { status: 201, statusText: 'Created' });
+    expect(next).toHaveBeenCalledWith(testData.orders[0]);
+  });
+
+  it.each([
+    { status: 200, body: { data: testData.orders[0] } },
+    { status: 201, body: { data: { ...testData.orders[0], id: '10' } } },
+    { status: 201, body: {} },
+  ])('rejects an unconfirmed or malformed creation response: %j', ({ status, body }) => {
+    const error = vi.fn();
+    api
+      .create({ symbol: 'BTCUSD', side: 'BUY', size: 1, openPrice: 100 }, idempotencyKey)
+      .subscribe({ error });
+    http
+      .expectOne({ method: 'POST', url: `${ordersDataConfig.apiBaseUrl}/orders` })
+      .flush(body, { status, statusText: 'OK' });
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ resource: 'orders' }));
   });
 
   it('accepts empty data and missing mappings for a recoverable dash in the UI', () => {

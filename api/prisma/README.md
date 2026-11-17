@@ -1,6 +1,6 @@
 # Prisma
 
-Prisma ORM 7.10.1 manages the PostgreSQL model and supplies orders, instruments and contract types to NestJS. All three GET endpoints read their tables through the generated client. Angular loads these endpoints during SSR and reuses the responses through HTTP Transfer Cache. Adding and closing orders changes browser memory only.
+Prisma ORM 7.10.1 manages the PostgreSQL model and supplies orders, instruments and contract types to NestJS. The three GET endpoints read their tables through the generated client; `POST /orders` persists a new order. Angular loads the initial data during SSR and reuses the responses through HTTP Transfer Cache. New orders enter the view after API confirmation. Closing orders still changes browser memory only.
 
 Run the commands below from the repository root. Node.js 24 LTS and a running PostgreSQL server are required; Docker is optional. The root `prisma.config.ts` locates the backend schema, migrations and seed and reads `DATABASE_URL` from the ignored local `.env` file.
 
@@ -49,23 +49,35 @@ npm run db:verify
 
 `db:migrate` runs `prisma migrate deploy`, applying the committed migration history. Running it again applies only pending migrations. `db:seed` runs `prisma db seed` explicitly: Prisma 7 does not run the seed automatically after migration. `db:generate` creates the typed client in `api/prisma/generated`; `build:api` also generates it before compiling the backend and client into `dist/api`.
 
-The seed replaces the entire development snapshot in one transaction. It deletes orders, instruments and contract types, then inserts contract types, instruments and orders. A successful run leaves exactly **6 contract types, 108 instruments and 213 orders**, including when additional records existed before the run. A failed transaction preserves the previous data. Use this seed only for the intended development database: it removes additional records from these three tables.
+The seed replaces the entire development snapshot in one transaction. It deletes orders and their related creation operations, instruments and contract types, then inserts contract types, instruments and orders and advances the order ID sequence beyond the seeded IDs. A successful run leaves exactly **6 contract types, 108 instruments and 213 orders**, including when additional records existed before the run. A failed transaction preserves the previous table data. Use this seed only when intentionally replacing the development snapshot: it removes additional records and their idempotency history.
 
-`db:verify` reads every record through Prisma and compares it with the fixtures, including exact decimal values, millisecond timestamps and relations. It also checks for sub-millisecond opening times and verifies the SQL JOIN across all three tables. It does not write to the database. For an already migrated and seeded database, use this command to verify the snapshot without rerunning the seed.
+`db:verify` reads every record through Prisma and compares it with the fixtures, including exact decimal values, millisecond timestamps and relations. It also checks for sub-millisecond opening times, verifies the SQL JOIN across all three tables, and requires the operation registry to be empty for the reference snapshot. It does not write to the database. Added orders cause a snapshot mismatch as expected. For an existing development database, apply pending migrations with `npm run db:migrate`; no reseed is needed to enable POST, and a reseed would remove those orders.
 
 All three JSON files in `api/data` remain inputs to the seed, verification scripts and tests. They are reference snapshots rather than runtime data sources for the HTTP endpoints.
 
-To verify the HTTP endpoints against this running, migrated and seeded database:
+## Dedicated integration database
 
-```bash
-npm run db:verify
-npm run test:api
-npm run db:verify
+HTTP and browser tests use a separate database and never write to `DATABASE_URL`. Set the following variable in the ignored `.env`, using the actual local credentials and port:
+
+```dotenv
+TEST_DATABASE_URL=postgresql://trading:YOUR_URL_ENCODED_PASSWORD@127.0.0.1:5432/trading_orders_test
 ```
 
-`test:api` builds the backend and checks response formats, fixture order and values, status filtering and validation, database reads, numeric/time conversion, database failures and timeouts. A temporary order inserted directly into PostgreSQL must appear in the HTTP response; `finally` removes it and confirms 213 remaining orders. Temporary instrument and contract-type records are also removed. The suite also checks SQL cancellation under a table lock, recovery and application shutdown.
+Prepare the database explicitly, then run the HTTP suite:
 
-Run the suite against `trading_orders_prisma_dev` on a loopback host (`localhost`, `127.0.0.1` or `::1`). Both the HTTP contract suite and the lock test use the same URL guard before connecting, starting NestJS or touching data. The guard requires a PostgreSQL protocol and rejects connection query overrides such as `?database=trading_orders`, even when the URL path names the correct development database. Rejections do not disclose credentials. Tests run serially; do not run another API suite or seed concurrently. They use the existing database without resetting it, applying migrations or seeding it. Run `db:verify` before and afterwards to confirm the original snapshot and cleanup.
+```bash
+npm run db:generate
+npm run db:test:setup
+npm run db:test:verify
+npm run test:api
+npm run db:test:verify
+```
+
+`db:test:setup` connects to the `postgres` maintenance database, creates `trading_orders_test` if missing, applies migrations, replaces the test snapshot using the seed, and verifies it. The configured user needs access to `postgres` and `CREATEDB` permission if the database is missing. Setup deliberately resets test data; routine test runs do not. `db:test:verify` performs only the full fixture comparison against this dedicated database.
+
+`test:api` builds the backend and checks POST persistence, GET readback, required/invalid/extra fields (400), unknown instruments (404), fixture ordering, numeric/time conversion, database failures and timeouts. Temporary orders, instruments and contract types are removed in `finally`, including when an HTTP assertion fails. The suite also checks SQL cancellation under a table lock, recovery and application shutdown.
+
+The shared URL guard requires PostgreSQL, a loopback host (`localhost`, `127.0.0.1` or `::1`) and exactly `trading_orders_test`. It rejects missing configuration and connection query overrides such as `?database=trading_orders` before connecting or starting NestJS, without disclosing credentials. API tests run serially; do not run seeds, API or E2E suites concurrently. Normal tests neither reset data nor apply migrations. Use `db:test:verify` before and afterwards to confirm cleanup. `npm run test:e2e` verifies the same test database, builds both applications and checks production SSR/hydration plus successful and rejected saves; see [browser verification](../../README.md#playwright-e2e-ssr-and-hydration).
 
 ## NestJS data access
 
@@ -74,6 +86,7 @@ Run the suite against `trading_orders_prisma_dev` on a loopback host (`localhost
 | Endpoint              | Response                                           | Ordering                                                                         |
 | --------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `GET /orders`         | `{ data: Order[] }`                                | Internal `displayOrder` ascending, nulls last, then `id` ascending               |
+| `POST /orders`        | HTTP 201, `{ data: Order }`                        | New rows follow the seeded snapshot in GET                                       |
 | `GET /instruments`    | `{ symbol: string, contractType: number }[]`       | Symbol, using JavaScript string comparison independently of PostgreSQL collation |
 | `GET /contract-types` | `{ contractType: number, contractSize: number }[]` | `contractType` ascending                                                         |
 
@@ -84,6 +97,14 @@ Orders are read in full, without pagination: the dashboard groups and summarizes
 Each order is explicitly mapped to exactly `id`, `symbol`, `side`, `size`, `openPrice`, `openTime` and `swap`. BigInt IDs must be within JavaScript's safe integer range before conversion to `number`. The three Decimal fields use the same decimal-to-number-to-text equality check as contract sizes; sizes and prices must be positive, while swaps may be negative or zero. `Date.getTime()` returns Unix milliseconds. A PostgreSQL check rejects sub-millisecond timestamps before a truncated `Date` can reach JSON. Both reads run in a Repeatable Read transaction so that the records and precision check observe the same snapshot.
 
 The model has no order status column and contains open orders only. Omitted status and case-insensitive `open` read the current database set; `closed` returns `{ data: [] }`. Invalid and repeated values return HTTP 400 before database access.
+
+`POST /orders` accepts exactly `{ symbol, side, size, openPrice }`. The DTO and global `ValidationPipe` require nonblank text for `symbol`, `BUY` or `SELL` for `side`, and finite numbers greater than zero for `size` and `openPrice`. Missing fields, numeric strings and extra properties are rejected with HTTP 400; the client cannot supply `id`, `openTime` or `swap`. The service checks instrument existence and returns 404 with `Instrument not found` if absent. NestJS errors use `{ statusCode, message, error }`, with an array of messages for DTO validation.
+
+The order ID migration adds a database sequence initialized beyond existing IDs and capped at JavaScript's maximum safe integer. Prisma uses the sequence default; the API assigns `openTime: new Date()` inside the order-creation transaction (backend clock, millisecond precision, stored as a UTC instant) and supplies `swap: 0`. It does not use PostgreSQL's microsecond-precision `now()` default. The created row uses the same checked BigInt, Decimal and date mapping as GET and returns HTTP 201 with `{ data: Order }`. `displayOrder` stays null so it follows the original snapshot.
+
+`POST /orders` requires a UUID in `Idempotency-Key`. The durable registry has a unique scope/key pair, a SHA-256 hash of the normalized DTO, and the successful HTTP status and JSON response body. Key reservation, order creation and response recording are atomic in one transaction. Concurrent attempts wait on PostgreSQL's unique constraint: after the winning transaction commits, the other attempt reads and replays its saved response. Identical data returns the same 201 and `order.id`; different data returns 409 with `code: "IDEMPOTENCY_KEY_REUSED"`. Missing or malformed keys return 400. Different keys with identical DTOs create separate orders. Rollback removes both the reservation and order, allowing a later attempt with that key to succeed. The registry survives application restarts and has no automatic expiry. The current scope is `POST /orders`; authenticated user identity must become part of that scope when authentication is added. [PostgreSQL unique checks](https://www.postgresql.org/docs/current/index-unique-checks.html) describe waiting for concurrent transactions during uniqueness enforcement.
+
+Angular preserves the operation key and original payload, including the quoted opening price, for uncertain outcomes. Browser-only `sessionStorage` retains that operation across reloads. Confirmed responses update the store by order ID, so replay does not create a duplicate view row. The idempotency transaction is part of this stage; broader trading rules remain outside it.
 
 Database failures or unsafe conversions produce HTTP 500 with `{ "statusCode": 500, "message": "Internal server error" }`, without connection details or a fixture/empty-array fallback.
 
@@ -155,7 +176,7 @@ Read this plan from the child node upward: `Seq Scan` reads all 213 rows, then `
 - Decimal fields use `Decimal @db.Decimal`, preserving unconstrained PostgreSQL `numeric`. The migration also preserves the original SQL CHECK constraints, including finite numeric values, positive sizes/prices, valid sides and finite opening times. Review those constraints when changing the schema because Prisma does not describe CHECK constraints.
 - `fixtures.ts` uses `lossless-json` to read original numeric tokens as strings. Contract sizes, order sizes, opening prices and swaps go directly from those strings to `Prisma.Decimal`, including exponent notation, without passing through JavaScript `number`.
 - Order identifiers become `bigint`. Contract type identifiers and opening times are checked as safe integers. JSON `openTime` is already Unix milliseconds: `new Date(milliseconds)` stores the same instant in `timestamptz(6)`. Verification and the HTTP endpoint check `open_time = date_trunc('milliseconds', open_time)` in PostgreSQL to detect additional microseconds; verification also compares `Date.getTime()` with the fixture milliseconds.
-- `client.ts` initializes `PrismaClient` with the PostgreSQL `@prisma/adapter-pg` driver adapter and `DATABASE_URL`. Both the scripts and NestJS use this factory. All HTTP endpoints read PostgreSQL through Prisma.
+- `client.ts` initializes `PrismaClient` with the PostgreSQL `@prisma/adapter-pg` driver adapter and `DATABASE_URL`. Both the scripts and NestJS use this factory; test tools substitute the guarded `TEST_DATABASE_URL`. HTTP reads and order creation use Prisma.
 
 For schema changes, edit `schema.prisma` and use `npm run db:migrate:dev -- --name descriptive_change` against a dedicated development database. Inspect generated SQL before applying or committing it, especially existing CHECK constraints. Apply committed migrations with `npm run db:migrate`.
 

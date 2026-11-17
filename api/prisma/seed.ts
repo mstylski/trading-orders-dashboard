@@ -14,6 +14,13 @@ async function main() {
       await tx.contractType.createMany({ data: fixtures.contracts });
       await tx.instrument.createMany({ data: fixtures.instruments });
       await tx.order.createMany({ data: fixtures.orders });
+      // Explicit fixture IDs do not advance PostgreSQL's sequence. Keep its
+      // high-water mark when reseeding so future POSTs cannot reuse issued IDs.
+      await tx.$queryRaw`
+        SELECT setval('public.orders_id_seq',
+          GREATEST((SELECT MAX(id) FROM public.orders),
+                   (SELECT last_value FROM public.orders_id_seq)), true)::text
+      `;
     });
     console.log('Seeded development snapshot: 6 contract types, 108 instruments, 213 orders.');
   } finally {

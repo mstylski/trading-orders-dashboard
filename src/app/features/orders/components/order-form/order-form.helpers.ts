@@ -1,5 +1,17 @@
 const volumePattern = /^\d+(?:[.,]\d+)?$/;
 
+// Expand JavaScript's shortest round-trip representation without rounding it.
+export function formatVolume(value: number): string {
+  const [coefficient, exponentText] = String(value).split('e');
+  if (exponentText === undefined) return coefficient.replace('.', ',');
+  const [integer, fraction = ''] = coefficient.split('.');
+  const digits = integer + fraction;
+  const decimalPosition = integer.length + Number(exponentText);
+  if (decimalPosition <= 0) return `0,${'0'.repeat(-decimalPosition)}${digits}`;
+  if (decimalPosition >= digits.length) return digits + '0'.repeat(decimalPosition - digits.length);
+  return `${digits.slice(0, decimalPosition)},${digits.slice(decimalPosition)}`;
+}
+
 export function parseVolume(value: string): number | null {
   if (!volumePattern.test(value)) return null;
   const volume = Number(value.replace(',', '.'));

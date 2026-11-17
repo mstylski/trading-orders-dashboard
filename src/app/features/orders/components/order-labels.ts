@@ -19,8 +19,16 @@ export const priceReasonLabel: Record<PriceUnavailableReason, string> = {
 };
 
 export const addOrderErrorLabel: Record<AddOrderError, string> = {
-  'invalid-input': 'Sprawdź symbol, stronę, dodatni wolumen i czas otwarcia.',
+  'legacy-pending': 'Najpierw sprawdź wynik zachowanego zlecenia z poprzedniej wersji.',
+  'operation-not-found':
+    'Nie znaleziono zakończonej operacji. Zlecenie mogło być jeszcze w toku. Zachowano jego dane; sprawdź wynik ponownie lub skontaktuj się z administratorem.',
+  'idempotency-conflict':
+    'Klucz zapisu został już użyty z innymi danymi. Sprawdź zlecenia przed kolejną próbą.',
+  'invalid-input': 'Sprawdź symbol, stronę i dodatni wolumen.',
   'missing-contract': 'Brak wartości kontraktu dla wybranego symbolu.',
   'stale-quote': 'Dodanie wymaga świeżego kwotowania. Poczekaj na bieżącą cenę.',
-  'id-exhausted': 'Wyczerpano zakres numerów zleceń.',
+  saving: 'Trwa zapisywanie zlecenia.',
+  'unknown-symbol': 'Wybrany instrument nie istnieje. Odśwież dane i spróbuj ponownie.',
+  'save-failed':
+    'Nie udało się potwierdzić zapisu zlecenia. Ponów próbę, aby sprawdzić wynik bez powielania zlecenia.',
 };

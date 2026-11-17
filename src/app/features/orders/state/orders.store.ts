@@ -12,19 +12,33 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
+import { catchError, defer, finalize, map, Observable, of } from 'rxjs';
+import { ApiErrorCode } from '../../../../../api/contracts/api-error-code';
 import { OrdersApiService } from '../data/orders-api.service';
 import { InvalidPayloadError } from '../data/order.guards';
+import { isRecord } from '../../../shared/util/type-guards';
 import { QuotesService } from '../data/quotes.service';
 import { applyQuotes, buildContractSizes, prepareOrderGroups } from '../domain/orders';
 import {
   AddOrderResult,
   ContractSizeBySymbol,
+  CreateOrderRequest,
   LoadStatus,
   NewOrder,
   Order,
   OrdersData,
   PriceUnavailableReason,
 } from '../models/order.models';
+import {
+  LegacyPendingOrder,
+  PendingOrder,
+  readLegacyPending,
+  readPending,
+  sameOrder,
+  validInput,
+} from './orders.store.helpers';
+
+export const PENDING_ORDER_STORAGE_KEY = 'trading-orders.pending-order.v1';
 
 @Injectable()
 export class OrdersStore {
@@ -32,13 +46,16 @@ export class OrdersStore {
   private readonly quoteService = inject(QuotesService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly responseInit = inject(RESPONSE_INIT, { optional: true });
+  private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly pendingState = signal<PendingOrder | null>(null);
+  private readonly legacyPendingState = signal<LegacyPendingOrder | null>(null);
   private readonly orderState = signal<readonly Order[]>([]);
   private readonly symbolState = signal<readonly string[]>([]);
   private readonly contractState = signal<ContractSizeBySymbol>(new Map());
   private readonly loadingState = signal<LoadStatus>('idle');
   private readonly errorState = signal<string | null>(null);
   private readonly selectedSymbolState = signal<string | null>(null);
-  private nextId = 1;
+  private readonly savingState = signal(false);
 
   // Read models for the page and its form.
   readonly orders = this.orderState.asReadonly();
@@ -47,6 +64,9 @@ export class OrdersStore {
   readonly status = this.loadingState.asReadonly();
   readonly error = this.errorState.asReadonly();
   readonly selectedSymbol = this.selectedSymbolState.asReadonly();
+  readonly saving = this.savingState.asReadonly();
+  readonly pendingOrder = computed(() => this.pendingState()?.request ?? null);
+  readonly legacyPending = this.legacyPendingState.asReadonly();
   readonly quotes = this.quoteService.quotes;
   readonly connectionStatus = this.quoteService.status;
   readonly retryDelay = this.quoteService.retryDelay;
@@ -93,11 +113,45 @@ export class OrdersStore {
   });
 
   constructor() {
-    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+    if (this.browser) {
       effect(() => {
         const symbols = this.desiredSymbols();
         if (symbols) untracked(() => this.quoteService.setSymbols(symbols));
       });
+    }
+  }
+
+  // Called after browser hydration. A pending write can already have committed,
+  // so restoration must retain both its key and the original quoted price.
+  restorePendingOrder(): CreateOrderRequest | null {
+    if (!this.browser) return null;
+    try {
+      const stored = sessionStorage.getItem(PENDING_ORDER_STORAGE_KEY);
+      if (stored) {
+        const raw: unknown = JSON.parse(stored);
+        const legacy = readLegacyPending(raw);
+        this.legacyPendingState.set(legacy);
+        if (legacy) return null;
+        const pending = readPending(raw);
+        this.pendingState.set(pending);
+        if (!pending) sessionStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore unavailable storage or malformed JSON; keep any in-memory attempt.
+    }
+    const request = this.pendingOrder();
+    if (request) this.selectedSymbolState.set(request.symbol);
+    return request;
+  }
+
+  private setPendingOrder(pending: PendingOrder | null): void {
+    this.pendingState.set(pending);
+    if (!this.browser) return;
+    try {
+      if (pending) sessionStorage.setItem(PENDING_ORDER_STORAGE_KEY, JSON.stringify(pending));
+      else sessionStorage.removeItem(PENDING_ORDER_STORAGE_KEY);
+    } catch {
+      // Storage may be blocked; the in-memory attempt still supports retries.
     }
   }
 
@@ -117,9 +171,8 @@ export class OrdersStore {
 
   private applyLoadedData({ orders, instruments, contracts }: OrdersData): void {
     this.orderState.set(orders);
-    this.symbolState.set([...new Set(orders.map((order) => order.symbol))]);
+    this.symbolState.set(instruments.map((instrument) => instrument.symbol));
     this.contractState.set(buildContractSizes(instruments, contracts));
-    this.nextId = orders.reduce((max, order) => Math.max(max, order.id), 0) + 1;
     this.loadingState.set('ready');
   }
 
@@ -147,28 +200,108 @@ export class OrdersStore {
     this.selectedSymbolState.set(symbol && this.symbols().includes(symbol) ? symbol : null);
   }
 
-  // Apply in-memory order commands; quote subscriptions follow the derived symbol set.
-  addOrder(input: NewOrder): AddOrderResult {
-    if (
-      this.status() !== 'ready' ||
-      !this.symbols().includes(input.symbol) ||
-      (input.side !== 'BUY' && input.side !== 'SELL') ||
-      !Number.isFinite(input.size) ||
-      input.size <= 0 ||
-      !Number.isFinite(input.openTime) ||
-      !Number.isFinite(new Date(input.openTime).getTime())
-    ) {
-      return { error: 'invalid-input' };
+  // The server assigns IDs. Append only the confirmed response.
+  addOrder(input: NewOrder): Observable<AddOrderResult> {
+    return defer(() => this.createOrder(input));
+  }
+
+  resolveLegacyOrder(): Observable<AddOrderResult> {
+    return defer(() => {
+      if (this.saving()) return of<AddOrderResult>({ error: 'saving' });
+      const pending = this.legacyPending();
+      if (!pending) return of<AddOrderResult>({ error: 'invalid-input' });
+      this.savingState.set(true);
+      return this.api.resolveCreation(pending.key).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        map((order): AddOrderResult => {
+          if (
+            !sameOrder(order, pending.request) ||
+            order.openPrice !== pending.request.openPrice ||
+            order.openTime !== pending.request.openTime
+          ) {
+            throw new InvalidPayloadError('orders');
+          }
+          this.orderState.update((orders) =>
+            orders.some((existing) => existing.id === order.id) ? orders : [...orders, order],
+          );
+          this.legacyPendingState.set(null);
+          this.setPendingOrder(null);
+          return { order };
+        }),
+        catchError((error: unknown) =>
+          of<AddOrderResult>({
+            error:
+              error instanceof HttpErrorResponse && error.status === 404
+                ? 'operation-not-found'
+                : 'save-failed',
+          }),
+        ),
+        finalize(() => this.savingState.set(false)),
+      );
+    });
+  }
+
+  private createOrder(input: NewOrder): Observable<AddOrderResult> {
+    if (this.saving()) return of({ error: 'saving' });
+    if (this.legacyPending()) return of({ error: 'legacy-pending' });
+    if (this.status() !== 'ready' || !validInput(input)) {
+      return of({ error: 'invalid-input' });
     }
-    if (!this.contractSizes().has(input.symbol)) return { error: 'missing-contract' };
-    const quote = this.quotes().get(input.symbol);
-    if (!quote || quote.bid <= 0 || !this.quoteService.isFresh(input.symbol)) {
-      return { error: 'stale-quote' };
+    let pending = this.pendingState();
+    // An uncertain request may already be committed. Only confirmation of that
+    // snapshot is allowed until its outcome is known; edits cannot replace it.
+    if (pending && !sameOrder(pending.request, input)) return of({ error: 'invalid-input' });
+    if (!pending) {
+      if (!this.symbols().includes(input.symbol)) return of({ error: 'invalid-input' });
+      if (!this.contractSizes().has(input.symbol)) return of({ error: 'missing-contract' });
+      const quote = this.quotes().get(input.symbol);
+      if (!quote || quote.bid <= 0 || !this.quoteService.isFresh(input.symbol)) {
+        return of({ error: 'stale-quote' });
+      }
+      pending = {
+        key: crypto.randomUUID(),
+        request: {
+          symbol: input.symbol,
+          side: input.side,
+          size: input.size,
+          openPrice: quote.bid,
+        },
+      };
+      // Persist before starting HTTP, including when navigation cancels the client.
+      this.setPendingOrder(pending);
     }
-    if (!Number.isSafeInteger(this.nextId)) return { error: 'id-exhausted' };
-    const order: Order = { ...input, id: this.nextId++, openPrice: quote.bid, swap: 0 };
-    this.orderState.update((orders) => [...orders, order]);
-    return { order };
+    this.savingState.set(true);
+    return this.api.create(pending.request, pending.key).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      map((order): AddOrderResult => {
+        this.orderState.update((orders) =>
+          orders.some((existing) => existing.id === order.id) ? orders : [...orders, order],
+        );
+        this.setPendingOrder(null);
+        return { order };
+      }),
+      catchError((error: unknown) => this.handleCreateOrderError(error)),
+      finalize(() => this.savingState.set(false)),
+    );
+  }
+
+  private handleCreateOrderError(error: unknown): Observable<AddOrderResult> {
+    if (error instanceof HttpErrorResponse && [400, 404, 409].includes(error.status)) {
+      this.setPendingOrder(null);
+    }
+    return of<AddOrderResult>({
+      error:
+        error instanceof HttpErrorResponse && error.status === 404
+          ? 'unknown-symbol'
+          : error instanceof HttpErrorResponse && error.status === 400
+            ? 'invalid-input'
+            : error instanceof HttpErrorResponse &&
+                error.status === 409 &&
+                isRecord(error.error) &&
+                error.error['code'] === ApiErrorCode.IdempotencyKeyReused
+              ? 'idempotency-conflict'
+              : 'save-failed',
+    });
   }
 
   closeOrder(id: number): readonly number[] {
